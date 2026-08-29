@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>StackPad</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <nav id="sidebar" class="collapsed">
+        <button id="new-tab-btn" class="sidebar-new" title="New tab (Ctrl+N)">
+          +
+        </button>
+        <div id="tab-list"></div>
+      </nav>
+
+      <div id="content-shell">
+        <header class="topbar">
+          <div class="format-group" aria-label="Text style selector">
+            <button class="format-btn" data-text-style="h1" type="button">
+              H1
+            </button>
+            <button class="format-btn" data-text-style="h2" type="button">
+              H2
+            </button>
+            <button
+              class="format-btn active"
+              data-text-style="body"
+              type="button"
+            >
+              Body
+            </button>
+          </div>
+
+          <div class="format-select-wrap" aria-label="Text style selector">
+            <div class="custom-select">
+              <button
+                id="format-select"
+                class="select-trigger"
+                type="button"
+                aria-haspopup="listbox"
+                aria-expanded="false"
+              >
+                <span class="select-value">Body</span>
+              </button>
+              <div
+                class="select-menu"
+                role="listbox"
+                aria-label="Text style selector"
+              >
+                <button
+                  type="button"
+                  class="select-option"
+                  data-value="h1"
+                  role="option"
+                >
+                  H1
+                </button>
+                <button
+                  type="button"
+                  class="select-option"
+                  data-value="h2"
+                  role="option"
+                >
+                  H2
+                </button>
+                <button
+                  type="button"
+                  class="select-option selected"
+                  data-value="body"
+                  role="option"
+                >
+                  Body
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="ratio-group" aria-label="Window ratio selector">
+            <div class="custom-select">
+              <button
+                id="ratio-select"
+                class="select-trigger"
+                type="button"
+                aria-haspopup="listbox"
+                aria-expanded="false"
+              >
+                <span class="select-value">4:5</span>
+              </button>
+              <div
+                class="select-menu"
+                role="listbox"
+                aria-label="Select screen ratio"
+              >
+                <button
+                  type="button"
+                  class="select-option selected"
+                  data-value="4:5"
+                  role="option"
+                >
+                  4:5
+                </button>
+                <button
+                  type="button"
+                  class="select-option"
+                  data-value="16:9"
+                  role="option"
+                >
+                  16:9
+                </button>
+                <button
+                  type="button"
+                  class="select-option"
+                  data-value="custom"
+                  role="option"
+                >
+                  Custom
+                </button>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <main id="editor-area">
+          <textarea
+            id="editor"
+            spellcheck="true"
+            wrap="soft"
+            autofocus
+          ></textarea>
+        </main>
+      </div>
+    </div>
+
+    <footer id="status-bar">
+      <span id="status-position">Ln 1, Col 1</span>
+      <span id="status-count">0 characters</span>
+      <span id="status-wrap">Word Wrap</span>
+      <span id="status-zoom">100%</span>
+    </footer>
+
+    <dialog id="find-dialog">
+      <form method="dialog" id="find-form">
+        <label>Find what: <input id="find-input" type="text" /></label>
+        <div class="dialog-actions">
+          <button id="find-next-btn" type="button">Find Next</button>
+          <button id="find-close-btn" type="button">Cancel</button>
+        </div>
+        <p id="find-status" class="dialog-status"></p>
+      </form>
+    </dialog>
+
+    <dialog id="replace-dialog">
+      <form method="dialog" id="replace-form">
+        <label>Find what: <input id="replace-find-input" type="text" /></label>
+        <label
+          >Replace with: <input id="replace-with-input" type="text"
+        /></label>
+        <div class="dialog-actions">
+          <button id="replace-next-btn" type="button">Find Next</button>
+          <button id="replace-one-btn" type="button">Replace</button>
+          <button id="replace-all-btn" type="button">Replace All</button>
+          <button id="replace-close-btn" type="button">Cancel</button>
+        </div>
+        <p id="replace-status" class="dialog-status"></p>
+      </form>
+    </dialog>
+
+    <dialog id="goto-dialog">
+      <form method="dialog" id="goto-form">
+        <label
+          >Line number: <input id="goto-input" type="number" min="1"
+        /></label>
+        <div class="dialog-actions">
+          <button id="goto-ok-btn" type="button">OK</button>
+          <button id="goto-close-btn" type="button">Cancel</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="font-dialog">
+      <form method="dialog" id="font-form">
+        <label
+          >Font family:
+          <select id="font-family-select">
+            <option value="'Consolas', 'Courier New', monospace">
+              Consolas (Monospace)
+            </option>
+            <option value="'Segoe UI', sans-serif">
+              Segoe UI (Proportional)
+            </option>
+            <option value="'Courier New', monospace">Courier New</option>
+            <option value="Georgia, serif">Georgia</option>
+          </select>
+        </label>
+        <label
+          >Font size:
+          <input id="font-size-input" type="number" min="8" max="72" value="14"
+        /></label>
+        <div class="dialog-actions">
+          <button id="font-ok-btn" type="button">OK</button>
+          <button id="font-close-btn" type="button">Cancel</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="rename-dialog">
+      <form method="dialog" id="rename-form">
+        <label>Tab name: <input id="rename-input" type="text" /></label>
+        <div class="dialog-actions">
+          <button id="rename-ok-btn" type="button">OK</button>
+          <button id="rename-close-btn" type="button">Cancel</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="renderer.js"></script>
+  </body>
+</html>
