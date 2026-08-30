@@ -9,73 +9,24 @@
     <div id="app">
       <nav id="sidebar" class="collapsed">
         <button id="new-tab-btn" class="sidebar-new" title="New tab (Ctrl+N)">
-          +
+          <svg
+            viewBox="0 0 24 24"
+            width="14"
+            height="14"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.4"
+            stroke-linecap="round"
+          >
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
         </button>
         <div id="tab-list"></div>
       </nav>
 
       <div id="content-shell">
         <header class="topbar">
-          <div class="format-group" aria-label="Text style selector">
-            <button class="format-btn" data-text-style="h1" type="button">
-              H1
-            </button>
-            <button class="format-btn" data-text-style="h2" type="button">
-              H2
-            </button>
-            <button
-              class="format-btn active"
-              data-text-style="body"
-              type="button"
-            >
-              Body
-            </button>
-          </div>
-
-          <div class="format-select-wrap" aria-label="Text style selector">
-            <div class="custom-select">
-              <button
-                id="format-select"
-                class="select-trigger"
-                type="button"
-                aria-haspopup="listbox"
-                aria-expanded="false"
-              >
-                <span class="select-value">Body</span>
-              </button>
-              <div
-                class="select-menu"
-                role="listbox"
-                aria-label="Text style selector"
-              >
-                <button
-                  type="button"
-                  class="select-option"
-                  data-value="h1"
-                  role="option"
-                >
-                  H1
-                </button>
-                <button
-                  type="button"
-                  class="select-option"
-                  data-value="h2"
-                  role="option"
-                >
-                  H2
-                </button>
-                <button
-                  type="button"
-                  class="select-option selected"
-                  data-value="body"
-                  role="option"
-                >
-                  Body
-                </button>
-              </div>
-            </div>
-          </div>
-
           <div class="ratio-group" aria-label="Window ratio selector">
             <div class="custom-select">
               <button
@@ -217,3 +168,4 @@
     <script src="renderer.js"></script>
   </body>
 </html>
+1788074153694-puckhw

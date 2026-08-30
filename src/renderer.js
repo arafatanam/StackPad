@@ -6,11 +6,9 @@ let darkMode = false;
 let zoomLevel = 100;
 let fontFamily = "'Consolas', 'Courier New', monospace";
 let fontSize = 16;
-let textStyle = "body";
 let saveTimer = null;
 let ratioSelection = "4:5";
 let suppressRatioClear = false;
-const textStyleScale = { body: 1, h2: 1.35, h1: 1.75 };
 const themeMedia = window.matchMedia("(prefers-color-scheme: dark)");
 
 const editor = document.getElementById("editor");
@@ -20,7 +18,6 @@ const statusCount = document.getElementById("status-count");
 const statusWrap = document.getElementById("status-wrap");
 const statusZoom = document.getElementById("status-zoom");
 const statusBar = document.getElementById("status-bar");
-const formatSelect = document.getElementById("format-select");
 const ratioSelect = document.getElementById("ratio-select");
 
 function uid() {
@@ -33,6 +30,7 @@ function persistIndex() {
     title: t.title,
     filePath: t.filePath || null,
     order: i,
+    active: t.id === activeId,
     lastModified: Date.now(),
   }));
   window.api.saveIndex(index);
@@ -70,9 +68,25 @@ function switchTab(id) {
   if (id === activeId) return;
   flushCurrentEditorContent();
   activeId = id;
+  persistIndex();
   renderTabs();
   loadActiveIntoEditor();
 }
+
+function cycleTab(direction) {
+  if (tabs.length < 2) return;
+  const idx = tabs.findIndex((t) => t.id === activeId);
+  if (idx === -1) return;
+  const nextIdx = (idx + direction + tabs.length) % tabs.length;
+  switchTab(tabs[nextIdx].id);
+}
+
+document.addEventListener("keydown", (event) => {
+  if ((event.ctrlKey || event.metaKey) && event.key === "Tab") {
+    event.preventDefault();
+    cycleTab(event.shiftKey ? -1 : 1);
+  }
+});
 
 function flushCurrentEditorContent() {
   const tab = getActiveTab();
@@ -124,15 +138,182 @@ function renameTab(id, newTitle) {
   renderTabs();
 }
 
+// ---------- Drag-and-drop tab reordering with a separating animation ----------
+// The drop rail stays locked to the sidebar tab list; the placeholder only moves
+// between actual tab items so it does not keep bouncing between adjacent slots.
+
+let dropPlaceholder = null;
+let lastPlaceholderAnchor = null;
+let lastPlaceholderBefore = null;
+
+function ensurePlaceholder() {
+  if (!dropPlaceholder) {
+    dropPlaceholder = document.createElement("div");
+    dropPlaceholder.className = "tab-drop-placeholder";
+  }
+  return dropPlaceholder;
+}
+
+function clearSplitClasses() {
+  tabListEl
+    .querySelectorAll(".drag-split-before, .drag-split-after")
+    .forEach((el) => {
+      el.classList.remove("drag-split-before", "drag-split-after");
+      el.style.transform = "";
+      el.style.marginTop = "";
+      el.style.marginBottom = "";
+      el.style.boxShadow = "";
+    });
+}
+
+function applySplitMotion(referenceEl, before) {
+  clearSplitClasses();
+  if (!referenceEl) return;
+
+  const targetClass = before ? "drag-split-before" : "drag-split-after";
+  referenceEl.classList.add(targetClass);
+
+  if (before) {
+    referenceEl.style.transform = "translateY(-8px)";
+    referenceEl.style.marginTop = "8px";
+    referenceEl.style.marginBottom = "-4px";
+    referenceEl.style.boxShadow = "0 -6px 16px rgba(13, 0, 109, 0.08)";
+  } else {
+    referenceEl.style.transform = "translateY(8px)";
+    referenceEl.style.marginTop = "-4px";
+    referenceEl.style.marginBottom = "8px";
+    referenceEl.style.boxShadow = "0 6px 16px rgba(13, 0, 109, 0.08)";
+  }
+}
+
+function placePlaceholder(referenceEl, before) {
+  const ph = ensurePlaceholder();
+  const samePosition =
+    lastPlaceholderAnchor === referenceEl && lastPlaceholderBefore === before;
+
+  if (!samePosition) {
+    lastPlaceholderAnchor = referenceEl;
+    lastPlaceholderBefore = before;
+    clearSplitClasses();
+
+    if (referenceEl) {
+      if (before) {
+        tabListEl.insertBefore(ph, referenceEl);
+      } else {
+        tabListEl.insertBefore(ph, referenceEl.nextSibling);
+      }
+      applySplitMotion(referenceEl, before);
+    } else {
+      if (ph.parentElement) ph.parentElement.removeChild(ph);
+      tabListEl.appendChild(ph);
+    }
+  }
+}
+
+function removePlaceholder() {
+  lastPlaceholderAnchor = null;
+  lastPlaceholderBefore = null;
+  clearSplitClasses();
+  if (dropPlaceholder && dropPlaceholder.parentElement) {
+    dropPlaceholder.parentElement.removeChild(dropPlaceholder);
+  }
+}
+
+function getPlaceholderInsertIndex() {
+  if (!dropPlaceholder || !dropPlaceholder.parentElement) return -1;
+  const children = Array.from(tabListEl.children);
+  const phIdx = children.indexOf(dropPlaceholder);
+  if (phIdx === -1) return -1;
+  let count = 0;
+  for (let i = 0; i < phIdx; i++) {
+    if (children[i].classList.contains("tab-item")) count++;
+  }
+  return count;
+}
+
+tabListEl.addEventListener("dragover", (e) => {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = "move";
+
+  const sidebar = document.getElementById("sidebar");
+  if (sidebar && !sidebar.contains(e.target)) {
+    removePlaceholder();
+    return;
+  }
+
+  const items = Array.from(tabListEl.querySelectorAll(".tab-item")).filter(
+    (el) => !el.classList.contains("dragging"),
+  );
+  if (!items.length) {
+    if (dropPlaceholder && !dropPlaceholder.parentElement) {
+      tabListEl.appendChild(dropPlaceholder);
+    }
+    return;
+  }
+
+  let targetIndex = 0;
+  let targetEl = null;
+  let before = true;
+
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    const rect = item.getBoundingClientRect();
+    if (e.clientY < rect.top + rect.height / 2) {
+      targetEl = item;
+      before = true;
+      targetIndex = i;
+      break;
+    }
+    targetIndex = i + 1;
+    before = false;
+    targetEl = item;
+  }
+
+  if (!targetEl && items.length) {
+    targetIndex = items.length;
+    before = false;
+    targetEl = items[items.length - 1];
+  }
+
+  placePlaceholder(targetEl, before);
+});
+
+tabListEl.addEventListener("drop", (e) => {
+  e.preventDefault();
+  const draggedId = e.dataTransfer.getData("text/plain");
+  const insertIdx = getPlaceholderInsertIndex();
+  removePlaceholder();
+  if (!draggedId || insertIdx === -1) return;
+
+  const fromIdx = tabs.findIndex((t) => t.id === draggedId);
+  if (fromIdx === -1) return;
+
+  const [moved] = tabs.splice(fromIdx, 1);
+  let targetIdx = insertIdx;
+  if (fromIdx < insertIdx) targetIdx -= 1;
+  targetIdx = Math.max(0, Math.min(targetIdx, tabs.length));
+  tabs.splice(targetIdx, 0, moved);
+  persistIndex();
+  renderTabs();
+});
+
+window.addEventListener("dragend", () => {
+  removePlaceholder();
+});
+
+window.addEventListener("drop", (e) => {
+  if (!document.getElementById("sidebar").contains(e.target)) {
+    removePlaceholder();
+  }
+});
+
 function renderTabs() {
   tabListEl.innerHTML = "";
   tabs.forEach((tab, index) => {
     const item = document.createElement("div");
     item.className = "tab-item" + (tab.id === activeId ? " active" : "");
     item.title = tab.title;
-
-    const dot = document.createElement("span");
-    dot.className = "tab-dot";
+    item.draggable = true;
 
     const shortLabel = document.createElement("span");
     shortLabel.className = "tab-short";
@@ -148,7 +329,8 @@ function renderTabs() {
     const renameBtn = document.createElement("button");
     renameBtn.className = "tab-action-btn";
     renameBtn.title = "Rename";
-    renameBtn.textContent = "✎";
+    renameBtn.innerHTML =
+      '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
     renameBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       openRenameDialog(tab);
@@ -157,7 +339,8 @@ function renderTabs() {
     const closeBtn = document.createElement("button");
     closeBtn.className = "tab-action-btn";
     closeBtn.title = "Close";
-    closeBtn.textContent = "✕";
+    closeBtn.innerHTML =
+      '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>';
     closeBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       closeTab(tab.id);
@@ -166,11 +349,21 @@ function renderTabs() {
     actions.appendChild(renameBtn);
     actions.appendChild(closeBtn);
 
-    item.appendChild(dot);
     item.appendChild(shortLabel);
     item.appendChild(label);
     item.appendChild(actions);
     item.addEventListener("click", () => switchTab(tab.id));
+
+    item.addEventListener("dragstart", (e) => {
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", tab.id);
+      item.classList.add("dragging");
+    });
+    item.addEventListener("dragend", () => {
+      item.classList.remove("dragging");
+      removePlaceholder();
+    });
+
     tabListEl.appendChild(item);
   });
 }
@@ -222,12 +415,6 @@ document
   .getElementById("new-tab-btn")
   .addEventListener("click", () => createTab());
 
-document.querySelectorAll(".format-btn").forEach((button) => {
-  button.addEventListener("click", () =>
-    applyTextStyle(button.dataset.textStyle),
-  );
-});
-
 function closeCustomDropdowns(except = null) {
   document.querySelectorAll(".custom-select").forEach((select) => {
     if (select === except) return;
@@ -265,14 +452,6 @@ function setupCustomDropdown(trigger, menu, onSelect) {
 }
 
 document.addEventListener("click", () => closeCustomDropdowns());
-
-setupCustomDropdown(
-  formatSelect,
-  formatSelect.closest(".custom-select").querySelector(".select-menu"),
-  (value) => {
-    applyTextStyle(value);
-  },
-);
 
 setupCustomDropdown(
   ratioSelect,
@@ -472,37 +651,13 @@ document
   .getElementById("font-close-btn")
   .addEventListener("click", () => fontDialog.close());
 
-function syncStyleControls() {
-  document.querySelectorAll(".format-btn").forEach((button) => {
-    button.classList.toggle("active", button.dataset.textStyle === textStyle);
-  });
-  if (formatSelect) {
-    const label =
-      textStyle === "h1" ? "H1" : textStyle === "h2" ? "H2" : "Body";
-    formatSelect.querySelector(".select-value").textContent = label;
-    formatSelect
-      .closest(".custom-select")
-      .querySelectorAll(".select-option")
-      .forEach((option) => {
-        option.classList.toggle("selected", option.dataset.value === textStyle);
-      });
-  }
-}
-
-function applyTextStyle(style) {
-  textStyle = textStyleScale[style] ? style : "body";
-  const scale = textStyleScale[textStyle];
-  editor.style.fontSize = `${(fontSize * scale * zoomLevel) / 100}px`;
-  syncStyleControls();
-}
-
 function applyFont() {
   editor.style.fontFamily = fontFamily;
-  applyTextStyle(textStyle);
+  editor.style.fontSize = `${(fontSize * zoomLevel) / 100}px`;
 }
 
 function applyZoom() {
-  applyTextStyle(textStyle);
+  editor.style.fontSize = `${(fontSize * zoomLevel) / 100}px`;
   updateStatus();
 }
 
@@ -634,28 +789,6 @@ window.api.onMenuAction(({ action, payload }) => {
     case "print":
       window.api.print();
       break;
-    case "undo":
-      document.execCommand("undo");
-      break;
-    case "redo":
-      document.execCommand("redo");
-      break;
-    case "cut":
-      document.execCommand("cut");
-      break;
-    case "copy":
-      document.execCommand("copy");
-      break;
-    case "paste":
-      document.execCommand("paste");
-      break;
-    case "delete":
-      document.execCommand("delete");
-      break;
-    case "select-all":
-      editor.focus();
-      editor.select();
-      break;
     case "time-date":
       insertTimeDate();
       break;
@@ -701,15 +834,6 @@ window.api.onMenuAction(({ action, payload }) => {
     case "theme-system":
       setTheme("system");
       break;
-    case "text-body":
-      applyTextStyle("body");
-      break;
-    case "text-h2":
-      applyTextStyle("h2");
-      break;
-    case "text-h1":
-      applyTextStyle("h1");
-      break;
     case "ratio-4-5":
       setRatio("4:5");
       break;
@@ -751,8 +875,7 @@ editor.addEventListener("keydown", (event) => {
 
 function initTheme() {
   setTheme("system");
-  applyTextStyle("body");
-  syncStyleControls();
+  applyFont();
   setRatio("4:5");
   updateResponsiveMode();
 }
@@ -768,7 +891,8 @@ async function init() {
         content: t.content,
         filePath: t.filePath || null,
       }));
-    activeId = tabs[0].id;
+    const savedActiveTab = saved.find((tab) => tab.active);
+    activeId = savedActiveTab?.id || tabs[tabs.length - 1].id;
   } else {
     createTab();
   }

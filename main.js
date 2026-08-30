@@ -53,6 +53,10 @@ function deleteDraft(id) {
 
 let mainWindow;
 
+if (process.platform === "win32") {
+  app.setAppUserModelId("com.stackpad.app");
+}
+
 function sendMenuAction(action, payload) {
   if (mainWindow)
     mainWindow.webContents.send("menu-action", { action, payload });
@@ -106,33 +110,13 @@ function buildMenu() {
     {
       label: "Edit",
       submenu: [
-        {
-          label: "Undo",
-          accelerator: "CmdOrCtrl+Z",
-          click: () => sendMenuAction("undo"),
-        },
-        {
-          label: "Redo",
-          accelerator: "CmdOrCtrl+Y",
-          click: () => sendMenuAction("redo"),
-        },
+        { role: "undo" },
+        { role: "redo" },
         { type: "separator" },
-        {
-          label: "Cut",
-          accelerator: "CmdOrCtrl+X",
-          click: () => sendMenuAction("cut"),
-        },
-        {
-          label: "Copy",
-          accelerator: "CmdOrCtrl+C",
-          click: () => sendMenuAction("copy"),
-        },
-        {
-          label: "Paste",
-          accelerator: "CmdOrCtrl+V",
-          click: () => sendMenuAction("paste"),
-        },
-        { label: "Delete", click: () => sendMenuAction("delete") },
+        { role: "cut" },
+        { role: "copy" },
+        { role: "paste" },
+        { role: "delete" },
         { type: "separator" },
         {
           label: "Find...",
@@ -155,11 +139,7 @@ function buildMenu() {
           click: () => sendMenuAction("go-to"),
         },
         { type: "separator" },
-        {
-          label: "Select All",
-          accelerator: "CmdOrCtrl+A",
-          click: () => sendMenuAction("select-all"),
-        },
+        { role: "selectAll" },
         {
           label: "Time/Date",
           accelerator: "F5",
@@ -176,9 +156,6 @@ function buildMenu() {
           checked: true,
           click: (item) => sendMenuAction("word-wrap", item.checked),
         },
-        { label: "Body", click: () => sendMenuAction("text-body") },
-        { label: "H2", click: () => sendMenuAction("text-h2") },
-        { label: "H1", click: () => sendMenuAction("text-h1") },
         { type: "separator" },
         { label: "Font...", click: () => sendMenuAction("font") },
       ],
@@ -241,7 +218,7 @@ function createWindow() {
     minWidth: 360,
     minHeight: 260,
     title: "StackPad",
-    icon: path.join(__dirname, "build", "icon.png"),
+    icon: path.join(__dirname, "build", "icon.ico"),
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
