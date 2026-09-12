@@ -11,7 +11,12 @@ StackPad is built for users who want a simple writing experience with a polished
 - Multiple tabs for managing notes
 - Restores the most recently selected tab when reopened
 - Save, save as, print, and local draft support
-- Find, replace, go to line, and word wrap
+- Find, replace, go to line, and word wrap with match navigation and highlighting
+- Rename tabs and reorder them by dragging
+- Font family, font size, and editor zoom controls
+- Date and time insertion
+- Window ratio presets for 4:5 and 16:9 layouts
+- Optional status bar and light, dark, or system theme controls
 - Keyboard shortcuts for common editing actions
 - Clean desktop-style interface with responsive layout options
 
@@ -79,14 +84,12 @@ stackpad/
 
 MIT
 
-## Release 1.0.1
+## Release 1.1.0
 
-Version 1.0.1 improves the desktop experience and Windows packaging:
+Version 1.1.0 expands editing controls and improves the desktop experience:
 
-- Replaced the invalid Windows icon asset with a real multi-resolution `.ico` file.
-- Configured the Windows installer and Electron window to use the StackPad icon.
-- Added a stable Windows App User Model ID for taskbar and Start menu identity.
-- Restored the last active note tab when the app is reopened.
-- Removed unused H1/H2/Body controls and kept the editor body-style by default.
-- Improved tab drag-and-drop insertion feedback and sidebar confinement.
-- Refined keyboard support for common editing commands and tab switching.
+- Added tab renaming and drag-and-drop tab reordering.
+- Added font family, font size, and editor zoom controls from 20% to 500%.
+- Improved find and replace with case-insensitive matching, previous/next navigation, replacement status, and visual match highlighting.
+- Added themed dialogs for find, replace, go-to-line, font, rename, and unsaved-close confirmation.
+- Preserved the Windows packaging, app identity, tab restoration, body-style editor, and keyboard improvements from version 1.0.1.
