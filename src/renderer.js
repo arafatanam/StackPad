@@ -5,7 +5,7 @@ let statusBarVisible = true;
 let darkMode = false;
 let zoomLevel = 100;
 let fontFamily = "'Consolas', 'Courier New', monospace";
-let fontSize = 16;
+let fontSize = 14;
 let saveTimer = null;
 let ratioSelection = "4:5";
 let suppressRatioClear = false;
@@ -13,12 +13,17 @@ const themeMedia = window.matchMedia("(prefers-color-scheme: dark)");
 
 const editor = document.getElementById("editor");
 const tabListEl = document.getElementById("tab-list");
+const newTabBtn = document.getElementById("new-tab-btn-bottom");
 const statusPosition = document.getElementById("status-position");
 const statusCount = document.getElementById("status-count");
 const statusWrap = document.getElementById("status-wrap");
 const statusZoom = document.getElementById("status-zoom");
 const statusBar = document.getElementById("status-bar");
 const ratioSelect = document.getElementById("ratio-select");
+
+newTabBtn.addEventListener("click", () => {
+  createTab();
+});
 
 function uid() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -127,7 +132,9 @@ function loadActiveIntoEditor() {
   updateStatus();
 }
 
+// =========================================================
 // CONFIRM DIALOG (themed replacement for window.confirm)
+// =========================================================
 
 const confirmDialog = document.getElementById("confirm-dialog");
 const confirmMessage = document.getElementById("confirm-message");
@@ -231,7 +238,9 @@ function renameTab(id, newTitle) {
   renderTabs();
 }
 
+// =========================================================
 // DRAG AND DROP TAB REORDERING
+// =========================================================
 
 let dropPlaceholder = null;
 let lastPlaceholderAnchor = null;
@@ -352,18 +361,7 @@ function getPlaceholderInsertIndex() {
   return count;
 }
 
-tabListEl.addEventListener("dragover", (e) => {
-  e.preventDefault();
-
-  e.dataTransfer.dropEffect = "move";
-
-  const sidebar = document.getElementById("sidebar");
-
-  if (sidebar && !sidebar.contains(e.target)) {
-    removePlaceholder();
-    return;
-  }
-
+function updatePlaceholder(clientY) {
   const items = Array.from(tabListEl.querySelectorAll(".tab-item")).filter(
     (el) => !el.classList.contains("dragging"),
   );
@@ -385,7 +383,7 @@ tabListEl.addEventListener("dragover", (e) => {
 
     const rect = item.getBoundingClientRect();
 
-    if (e.clientY < rect.top + rect.height / 2) {
+    if (clientY < rect.top + rect.height / 2) {
       targetEl = item;
       before = true;
       targetIndex = i;
@@ -406,6 +404,19 @@ tabListEl.addEventListener("dragover", (e) => {
   }
 
   placePlaceholder(targetEl, before);
+}
+
+tabListEl.addEventListener("dragover", (e) => {
+  e.preventDefault();
+
+  e.dataTransfer.dropEffect = "move";
+
+  if (!tabListEl.contains(e.target)) {
+    removePlaceholder();
+    return;
+  }
+
+  updatePlaceholder(e.clientY);
 });
 
 tabListEl.addEventListener("drop", (e) => {
@@ -451,7 +462,113 @@ window.addEventListener("drop", (e) => {
   }
 });
 
+let customDragState = null;
+let pendingDragState = null;
+
+function startCustomDrag(state) {
+  const { item, tab, pointerEvent } = state;
+  const rect = item.getBoundingClientRect();
+  const preview = item.cloneNode(true);
+
+  item.classList.add("dragging");
+  preview.classList.add("tab-drag-preview");
+  preview.classList.remove("active");
+  preview.style.left = `${rect.left}px`;
+  preview.style.top = `${rect.top}px`;
+  preview.style.width = `${rect.width}px`;
+  document.body.appendChild(preview);
+
+  customDragState = {
+    tabId: tab.id,
+    item,
+    preview,
+    grabOffsetY: pointerEvent.clientY - rect.top,
+    railLeft: rect.left,
+    railWidth: rect.width,
+  };
+
+  pendingDragState = null;
+  updatePlaceholder(pointerEvent.clientY);
+}
+
+function finishCustomDrag() {
+  if (!customDragState) return;
+
+  const { tabId, item, preview } = customDragState;
+  const insertIdx = getPlaceholderInsertIndex();
+
+  item.classList.remove("dragging");
+  preview.remove();
+  customDragState = null;
+  removePlaceholder();
+
+  if (insertIdx === -1) return;
+
+  const fromIdx = tabs.findIndex((t) => t.id === tabId);
+
+  if (fromIdx === -1) return;
+
+  const [moved] = tabs.splice(fromIdx, 1);
+
+  let targetIdx = insertIdx;
+
+  if (fromIdx < insertIdx) {
+    targetIdx -= 1;
+  }
+
+  targetIdx = Math.max(0, Math.min(targetIdx, tabs.length));
+
+  tabs.splice(targetIdx, 0, moved);
+
+  persistIndex();
+  renderTabs();
+}
+
+window.addEventListener("pointermove", (e) => {
+  if (pendingDragState) {
+    const movedX = e.clientX - pendingDragState.startX;
+    const movedY = e.clientY - pendingDragState.startY;
+    const movedDistance = Math.hypot(movedX, movedY);
+
+    if (movedDistance >= 6) {
+      startCustomDrag({
+        ...pendingDragState,
+        pointerEvent: e,
+      });
+    }
+  }
+
+  if (!customDragState) return;
+
+  const { item, preview, grabOffsetY, railLeft, railWidth } = customDragState;
+  const listRect = tabListEl.getBoundingClientRect();
+  const previewHeight = item.getBoundingClientRect().height;
+  const top = Math.max(
+    listRect.top,
+    Math.min(e.clientY - grabOffsetY, listRect.bottom - previewHeight),
+  );
+
+  preview.style.left = `${railLeft}px`;
+  preview.style.top = `${top}px`;
+  preview.style.width = `${railWidth}px`;
+
+  updatePlaceholder(
+    Math.max(listRect.top, Math.min(e.clientY, listRect.bottom)),
+  );
+});
+
+window.addEventListener("pointerup", () => {
+  pendingDragState = null;
+  finishCustomDrag();
+});
+window.addEventListener("pointercancel", () => {
+  pendingDragState = null;
+  finishCustomDrag();
+});
+
+// =========================================================
 // RENDER TABS
+// =========================================================
 
 function renderTabs() {
   tabListEl.innerHTML = "";
@@ -463,7 +580,7 @@ function renderTabs() {
 
     item.title = tab.title;
 
-    item.draggable = true;
+    item.draggable = false;
 
     const shortLabel = document.createElement("span");
 
@@ -525,25 +642,32 @@ function renderTabs() {
       switchTab(tab.id);
     });
 
-    item.addEventListener("dragstart", (e) => {
-      e.dataTransfer.effectAllowed = "move";
+    item.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0 || e.target.closest("button")) return;
 
-      e.dataTransfer.setData("text/plain", tab.id);
+      pendingDragState = {
+        tab,
+        item,
+        startX: e.clientX,
+        startY: e.clientY,
+      };
 
-      item.classList.add("dragging");
+      item.setPointerCapture(e.pointerId);
     });
 
-    item.addEventListener("dragend", () => {
-      item.classList.remove("dragging");
+    label.addEventListener("dblclick", (e) => {
+      e.stopPropagation();
 
-      removePlaceholder();
+      openRenameDialog(tab);
     });
 
     tabListEl.appendChild(item);
   });
 }
 
+// =========================================================
 // RENAME
+// =========================================================
 
 const renameDialog = document.getElementById("rename-dialog");
 
@@ -583,7 +707,9 @@ document.getElementById("rename-form").addEventListener("submit", (e) => {
   confirmRename();
 });
 
+// =========================================================
 // FIND
+// =========================================================
 
 const findDialog = document.getElementById("find-dialog");
 
@@ -599,17 +725,17 @@ const findPrevBtn = document.getElementById("find-prev-btn");
 
 const findCloseBtn = document.getElementById("find-close-btn");
 
-// -------
+// ---------------------------------------------------------
 // FIND STATE
-// -------
+// ---------------------------------------------------------
 
 let findMatches = [];
 let currentFindMatch = -1;
 let lastFindTerm = "";
 
-// -------
+// ---------------------------------------------------------
 // EXACT SEARCH
-// -------
+// ---------------------------------------------------------
 
 function getMatchIndices(term) {
   if (!term) return [];
@@ -637,9 +763,9 @@ function getMatchIndices(term) {
   return matches;
 }
 
-// -------
+// ---------------------------------------------------------
 // FIND HIGHLIGHT
-// -------
+// ---------------------------------------------------------
 //
 // A match can visually wrap across two or more lines when word wrap
 // splits it (e.g. searching "this and that" where "this and" ends
@@ -786,9 +912,9 @@ editor.addEventListener("scroll", () => {
   drawHighlightRects(rects);
 });
 
-// -------
+// ---------------------------------------------------------
 // RESET FIND
-// -------
+// ---------------------------------------------------------
 
 function resetFindState() {
   findMatches = [];
@@ -802,9 +928,9 @@ function resetFindState() {
   hideFindHighlight();
 }
 
-// -------
+// ---------------------------------------------------------
 // UPDATE FIND STATUS
-// -------
+// ---------------------------------------------------------
 
 function updateFindStatus() {
   const term = findInput.value;
@@ -832,9 +958,9 @@ function updateFindStatus() {
   findStatus.textContent = `${currentFindMatch + 1} of ${findMatches.length}`;
 }
 
-// -------
+// ---------------------------------------------------------
 // REFRESH FIND RESULTS
-// -------
+// ---------------------------------------------------------
 
 function refreshFindMatches(resetPosition = true) {
   const term = findInput.value;
@@ -863,9 +989,9 @@ function refreshFindMatches(resetPosition = true) {
   updateFindStatus();
 }
 
-// -------
+// ---------------------------------------------------------
 // OPEN FIND / OPEN REPLACE
-// -------
+// ---------------------------------------------------------
 
 function openFind() {
   if (replaceDialog.open) {
@@ -889,9 +1015,9 @@ function openFind() {
   findInput.select();
 }
 
-// -------
+// ---------------------------------------------------------
 // REVEAL A MATCH IN THE EDITOR
-// -------
+// ---------------------------------------------------------
 
 function revealMatchInEditor(start, end, returnFocusEl) {
   editor.setSelectionRange(start, end);
@@ -935,9 +1061,9 @@ function revealFindMatch(matchIndex) {
   updateFindStatus();
 }
 
-// -------
+// ---------------------------------------------------------
 // FIND NEXT
-// -------
+// ---------------------------------------------------------
 
 function findNext() {
   const term = findInput.value;
@@ -976,9 +1102,9 @@ function findNext() {
   revealFindMatch(nextIndex);
 }
 
-// -------
+// ---------------------------------------------------------
 // FIND PREVIOUS
-// -------
+// ---------------------------------------------------------
 
 function findPrevious() {
   const term = findInput.value;
@@ -1017,17 +1143,17 @@ function findPrevious() {
   revealFindMatch(previousIndex);
 }
 
-// -------
+// ---------------------------------------------------------
 // FIND INPUT
-// -------
+// ---------------------------------------------------------
 
 findInput.addEventListener("input", () => {
   refreshFindMatches(true);
 });
 
-// -------
+// ---------------------------------------------------------
 // FIND BUTTONS
-// -------
+// ---------------------------------------------------------
 
 findNextBtn.addEventListener("click", () => {
   findNext();
@@ -1043,9 +1169,9 @@ findCloseBtn.addEventListener("click", () => {
   resetFindState();
 });
 
-// -------
+// ---------------------------------------------------------
 // FIND KEYBOARD
-// -------
+// ---------------------------------------------------------
 
 findInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter") {
@@ -1069,9 +1195,9 @@ findInput.addEventListener("keydown", (event) => {
   }
 });
 
-// -------
+// ---------------------------------------------------------
 // FIND FORM
-// -------
+// ---------------------------------------------------------
 
 findForm.addEventListener("submit", (event) => {
   event.preventDefault();
@@ -1079,7 +1205,9 @@ findForm.addEventListener("submit", (event) => {
   findNext();
 });
 
+// =========================================================
 // REPLACE
+// =========================================================
 
 const replaceDialog = document.getElementById("replace-dialog");
 
@@ -1254,7 +1382,9 @@ document.getElementById("replace-form").addEventListener("submit", (e) => {
   });
 });
 
+// =========================================================
 // GO TO
+// =========================================================
 
 const gotoDialog = document.getElementById("goto-dialog");
 
@@ -1304,7 +1434,9 @@ document.getElementById("goto-form").addEventListener("submit", (e) => {
   confirmGoTo();
 });
 
+// =========================================================
 // FONT
+// =========================================================
 
 const fontDialog = document.getElementById("font-dialog");
 
@@ -1374,7 +1506,9 @@ function zoomReset() {
   applyZoom();
 }
 
+// =========================================================
 // WORD WRAP / STATUS BAR
+// =========================================================
 
 function setWordWrap(value) {
   wordWrap = value;
@@ -1390,7 +1524,9 @@ function setStatusBarVisible(value) {
   statusBar.classList.toggle("hidden", !statusBarVisible);
 }
 
+// =========================================================
 // STATUS
+// =========================================================
 
 function updateStatus() {
   const position = editor.selectionStart || 0;
@@ -1442,7 +1578,24 @@ editor.addEventListener("click", updateStatus);
 
 editor.addEventListener("keyup", updateStatus);
 
+editor.addEventListener("keydown", (event) => {
+  if (event.key !== "Tab" || event.ctrlKey || event.metaKey || event.altKey) {
+    return;
+  }
+
+  event.preventDefault();
+
+  const start = editor.selectionStart;
+  const end = editor.selectionEnd;
+  const indentation = "   ";
+
+  editor.setRangeText(indentation, start, end, "end");
+  updateStatus();
+});
+
+// =========================================================
 // RATIO
+// =========================================================
 
 function syncRatioControls(value = ratioSelection) {
   const menu = ratioSelect
@@ -1559,7 +1712,9 @@ setupCustomDropdown(
   },
 );
 
+// =========================================================
 // FILE OPEN / SAVE
+// =========================================================
 
 async function doOpen() {
   const result = await window.api.openFile();
@@ -1613,7 +1768,9 @@ async function doSaveAs() {
   renderTabs();
 }
 
+// =========================================================
 // TIME / DATE
+// =========================================================
 
 function insertTimeDate() {
   const now = new Date();
@@ -1643,7 +1800,9 @@ function insertTimeDate() {
   updateStatus();
 }
 
+// =========================================================
 // RESPONSIVE / THEME
+// =========================================================
 
 function updateResponsiveMode() {
   const compact = window.innerWidth < window.innerHeight * 1.25;
@@ -1675,7 +1834,9 @@ function setDarkMode(value) {
   setTheme(value ? "dark" : "light");
 }
 
+// =========================================================
 // WINDOW RESIZE
+// =========================================================
 
 window.addEventListener("resize", () => {
   updateResponsiveMode();
@@ -1685,7 +1846,9 @@ window.addEventListener("resize", () => {
   }
 });
 
+// =========================================================
 // MENU ACTIONS
+// =========================================================
 
 window.api.onMenuAction(({ action, payload }) => {
   switch (action) {
@@ -1786,7 +1949,9 @@ window.api.onMenuAction(({ action, payload }) => {
   }
 });
 
+// =========================================================
 // EDITOR KEYBOARD SHORTCUTS
+// =========================================================
 
 editor.addEventListener("keydown", (event) => {
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "f") {
@@ -1824,7 +1989,9 @@ editor.addEventListener("keydown", (event) => {
   }
 });
 
+// =========================================================
 // INITIALIZATION
+// =========================================================
 
 function initTheme() {
   setTheme("system");

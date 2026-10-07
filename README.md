@@ -12,7 +12,9 @@ StackPad is built for users who want a simple writing experience with a polished
 - Restores the most recently selected tab when reopened
 - Save, save as, print, and local draft support
 - Find, replace, go to line, and word wrap with match navigation and highlighting
-- Rename tabs and reorder them by dragging
+- Create new tabs with the plus button
+- Rename tabs with the pencil button or by double-clicking a tab title
+- Reorder tabs by dragging them vertically within the sidebar rail
 - Font family, font size, and editor zoom controls
 - Date and time insertion
 - Window ratio presets for 4:5 and 16:9 layouts
@@ -84,12 +86,11 @@ stackpad/
 
 MIT
 
-## Release 1.1.0
+## Release 1.2.0
 
-Version 1.1.0 expands editing controls and improves the desktop experience:
+Version 1.2.0 improves tab creation, naming, and drag-and-drop organization:
 
-- Added tab renaming and drag-and-drop tab reordering.
-- Added font family, font size, and editor zoom controls from 20% to 500%.
-- Improved find and replace with case-insensitive matching, previous/next navigation, replacement status, and visual match highlighting.
-- Added themed dialogs for find, replace, go-to-line, font, rename, and unsaved-close confirmation.
-- Preserved the Windows packaging, app identity, tab restoration, body-style editor, and keyboard improvements from version 1.0.1.
+- Fixed the plus button so it opens a new tab.
+- Added a greyed-out tab preview while dragging.
+- Constrained tab dragging to the sidebar rail so tabs move only up and down within their panel.
+- Preserved the tab reorder placeholder and existing drag-and-drop behavior.

@@ -221,7 +221,7 @@ textarea:focus-visible {
   color: var(--tab-active-text);
 }
 
-/*  Sidebar  */
+/* ---------- Sidebar ---------- */
 
 #sidebar {
   background: var(--sidebar-bg);
@@ -324,6 +324,14 @@ textarea:focus-visible {
 
 .tab-item.dragging {
   opacity: 0.4;
+}
+
+.tab-drag-preview {
+  position: fixed;
+  z-index: 100;
+  pointer-events: none;
+  opacity: 0.55;
+  box-shadow: 0 4px 12px var(--shadow-elevated);
 }
 
 .tab-item.drag-split-before,
@@ -431,7 +439,7 @@ textarea:focus-visible {
   transform: scale(0.9);
 }
 
-/*  Editor  */
+/* ---------- Editor ---------- */
 
 #editor-area {
   flex: 1;
@@ -483,7 +491,7 @@ body.dark .find-highlight {
   background: rgba(255, 205, 0, 0.35);
 }
 
-/*  Status bar  */
+/* ---------- Status bar ---------- */
 
 #status-bar {
   height: 30px;
@@ -522,7 +530,7 @@ body.dark .find-highlight {
   min-width: 100px;
 }
 
-/*  Dialogs (goto, font, rename, confirm)  */
+/* ---------- Dialogs (goto, font, rename, confirm) ---------- */
 
 dialog {
   border: 1px solid var(--border);
@@ -603,7 +611,7 @@ dialog select {
   text-overflow: ellipsis;
 }
 
-/*  Confirm dialog (themed replacement for window.confirm)  */
+/* ---------- Confirm dialog (themed replacement for window.confirm) ---------- */
 
 #confirm-dialog {
   min-width: 320px;
@@ -628,12 +636,14 @@ dialog select {
   border-color: var(--danger-border);
 }
 
-/* Find / Replace: SAME docked spot, SAME box sizing, SAME layout.
+/* ---------------------------------------------------------------
+   Find / Replace: SAME docked spot, SAME box sizing, SAME layout.
    Both dialogs share this positioning block, and both reuse the
    .find-header / .find-input-row / .find-footer structure below, so
    changing one visually changes both. Only one is ever open at a
    time (enforced in JS), so switching between them reads as one
-   floating panel changing mode rather than two different popups. */
+   floating panel changing mode rather than two different popups.
+   --------------------------------------------------------------- */
 
 #find-dialog,
 #replace-dialog {
@@ -671,7 +681,7 @@ dialog select {
   gap: 0;
 }
 
-/*  Shared header (title + close button)  */
+/* ---------- Shared header (title + close button) ---------- */
 
 .find-header {
   height: 42px;
@@ -721,7 +731,7 @@ dialog select {
   transform: scale(0.92);
 }
 
-/*  Shared input row(s)  */
+/* ---------- Shared input row(s) ---------- */
 
 .find-input-row {
   padding: 12px 14px 8px;
@@ -759,7 +769,7 @@ dialog select {
   box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
-/*  Shared footer (status + buttons)  */
+/* ---------- Shared footer (status + buttons) ---------- */
 
 .find-footer {
   min-height: 46px;
@@ -816,7 +826,7 @@ dialog select {
   transform: scale(0.97);
 }
 
-/*  Scrollbars  */
+/* ---------- Scrollbars ---------- */
 
 ::-webkit-scrollbar {
   width: 10px;
