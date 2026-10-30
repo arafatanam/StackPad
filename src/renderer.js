@@ -1,25 +1,47 @@
-let tabs = []; // { id, title, content, filePath, order, dirty }
+let tabs = []; // { id, title, color, content, savedContent, filePath, encoding, eol, view, persistedDirty }
 let activeId = null;
 let wordWrap = true;
 let statusBarVisible = true;
-let darkMode = false;
 let zoomLevel = 100;
 let fontFamily = "'Consolas', 'Courier New', monospace";
 let fontSize = 14;
-let saveTimer = null;
 let ratioSelection = "4:5";
-let suppressRatioClear = false;
+let themeMode = "system";
+let saveTimer = null;
+let pendingDraftTab = null;
+let enteringTabId = null;
+const closingTabIds = new Set();
+const isWindows = window.api.platform === "win32";
+const defaultEol = isWindows ? "crlf" : "lf";
 const themeMedia = window.matchMedia("(prefers-color-scheme: dark)");
+const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+document.body.classList.toggle("windows-titlebar", isWindows);
+document.body.classList.add(`platform-${window.api.platform}`);
 
 const editor = document.getElementById("editor");
+const editorArea = document.getElementById("editor-area");
 const tabListEl = document.getElementById("tab-list");
 const newTabBtn = document.getElementById("new-tab-btn-bottom");
 const statusPosition = document.getElementById("status-position");
+const statusWords = document.getElementById("status-words");
 const statusCount = document.getElementById("status-count");
 const statusWrap = document.getElementById("status-wrap");
 const statusZoom = document.getElementById("status-zoom");
+const statusEol = document.getElementById("status-eol");
+const statusEncoding = document.getElementById("status-encoding");
 const statusBar = document.getElementById("status-bar");
-const ratioSelect = document.getElementById("ratio-select");
+const findControls = document.getElementById("find-controls");
+const topbar = document.querySelector(".topbar");
+const documentTitle = document.getElementById("document-title");
+const documentTitleText = document.getElementById("document-title-text");
+const documentTitleDirty = document.getElementById("document-title-dirty");
+const documentTitleInput = document.getElementById("document-title-input");
+const documentTitleActions = document.getElementById("document-title-actions");
+const dropOverlay = document.getElementById("drop-overlay");
+const toast = document.getElementById("toast");
+const printArea = document.getElementById("print-area");
+let editingDocumentTitle = false;
+let documentTitleTargetId = null;
 
 newTabBtn.addEventListener("click", () => {
   createTab();
@@ -29,38 +51,181 @@ function uid() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function persistIndex() {
-  const index = tabs.map((t, i) => ({
+function samePath(a, b) {
+  return isWindows ? a.toLowerCase() === b.toLowerCase() : a === b;
+}
+
+// =========================================================
+// SETTINGS
+// =========================================================
+
+let settingsTimer = null;
+let pendingSettings = {};
+
+function saveSetting(partial) {
+  Object.assign(pendingSettings, partial);
+  clearTimeout(settingsTimer);
+  settingsTimer = setTimeout(flushSettings, 250);
+}
+
+function flushSettings() {
+  clearTimeout(settingsTimer);
+  if (!Object.keys(pendingSettings).length) return;
+  window.api.updateSettings(pendingSettings);
+  pendingSettings = {};
+}
+
+// =========================================================
+// TAB BADGES
+// =========================================================
+//
+// Each tab shows a badge with its title's initials. The badge colour is
+// picked once when the tab is created (whichever palette colour is used
+// least) and saved with the tab, so renaming changes only the letters.
+
+const TAB_COLORS = [
+  "#3b5bdb", // blue
+  "#0b7285", // teal
+  "#2b8a3e", // green
+  "#c2410c", // rust
+  "#c92a2a", // red
+  "#a61e4d", // berry
+  "#6741d9", // violet
+  "#495057", // slate
+];
+
+const PAGE_ICON =
+  '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/></svg>';
+
+function pickTabColor() {
+  const counts = TAB_COLORS.map(
+    (_, i) => tabs.filter((t) => t.color === i).length,
+  );
+  const fewest = Math.min(...counts);
+  const choices = counts
+    .map((count, i) => (count === fewest ? i : -1))
+    .filter((i) => i !== -1);
+
+  return choices[Math.floor(Math.random() * choices.length)];
+}
+
+function isUntitled(title) {
+  return title.trim().toLowerCase() === "untitled";
+}
+
+// "Meeting Notes" -> "MN", "Groceries" -> "GR", "todo-list" -> "TL".
+function getInitials(title) {
+  const lettersOf = (word) =>
+    Array.from(word).filter((ch) => /[\p{L}\p{N}]/u.test(ch));
+  const words = title
+    .trim()
+    .split(/[\s_.-]+/)
+    .map(lettersOf)
+    .filter((letters) => letters.length);
+
+  const initials =
+    words.length >= 2 ? words[0][0] + words[1][0] : (words[0] || []).slice(0, 2).join("");
+
+  return (initials || Array.from(title.trim()).slice(0, 2).join("")).toUpperCase();
+}
+
+// =========================================================
+// TABS AND PERSISTENCE
+// =========================================================
+
+// A file tab is dirty when it differs from what is on disk. An untitled tab
+// only lives in StackPad's drafts, so any text in it counts as unsaved.
+function isDirty(tab) {
+  return tab.filePath
+    ? tab.content !== tab.savedContent
+    : tab.content.length > 0;
+}
+
+function buildIndex() {
+  return tabs.map((t, i) => ({
     id: t.id,
     title: t.title,
+    color: t.color,
     filePath: t.filePath || null,
+    encoding: t.encoding,
+    eol: t.eol,
+    dirty: isDirty(t),
     order: i,
     active: t.id === activeId,
-    lastModified: Date.now(),
   }));
+}
+
+function persistIndex() {
+  const index = buildIndex();
+  tabs.forEach((t, i) => {
+    t.persistedDirty = index[i].dirty;
+  });
 
   window.api.saveIndex(index);
 }
 
 function scheduleDraftSave(tab) {
-  clearTimeout(saveTimer);
+  if (pendingDraftTab && pendingDraftTab !== tab) flushPendingDraft();
 
-  saveTimer = setTimeout(() => {
-    window.api.saveDraft(tab.id, tab.content);
-  }, 400);
+  pendingDraftTab = tab;
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(flushPendingDraft, 400);
+}
+
+function flushPendingDraft() {
+  clearTimeout(saveTimer);
+  if (!pendingDraftTab) return;
+
+  window.api.saveDraft(pendingDraftTab.id, pendingDraftTab.content);
+  pendingDraftTab = null;
+}
+
+// Last-chance save when the window closes: the draft debounce may still be
+// waiting, so write synchronously before the page goes away.
+window.addEventListener("beforeunload", () => {
+  const tab = getActiveTab();
+  if (tab) tab.content = editor.value;
+
+  clearTimeout(saveTimer);
+  const drafts = [];
+  if (pendingDraftTab) drafts.push(pendingDraftTab);
+  if (tab && tab !== pendingDraftTab) drafts.push(tab);
+  pendingDraftTab = null;
+
+  clearTimeout(settingsTimer);
+  window.api.flushSync({
+    index: buildIndex(),
+    drafts: drafts.map(({ id, content }) => ({ id, content })),
+    settings: pendingSettings,
+  });
+});
+
+function updateDirtyState(tab) {
+  const dirty = isDirty(tab);
+  const item = tabListEl.querySelector(`.tab-item[data-id="${tab.id}"]`);
+
+  if (item) item.classList.toggle("dirty", dirty);
+  if (tab.id === activeId) documentTitleDirty.hidden = !dirty;
+  if (dirty !== tab.persistedDirty) persistIndex();
 }
 
 function createTab(opts = {}) {
+  flushCurrentEditorContent();
+
   const tab = {
     id: uid(),
     title: opts.title || "Untitled",
+    color: pickTabColor(),
     content: opts.content || "",
+    savedContent: opts.savedContent ?? null,
     filePath: opts.filePath || null,
-    dirty: false,
+    encoding: opts.encoding || "utf-8",
+    eol: opts.eol || defaultEol,
   };
 
   tabs.push(tab);
   activeId = tab.id;
+  enteringTabId = tab.id;
 
   persistIndex();
 
@@ -70,6 +235,7 @@ function createTab(opts = {}) {
 
   renderTabs();
   loadActiveIntoEditor();
+  onActiveTabChanged();
 
   return tab;
 }
@@ -86,10 +252,17 @@ function switchTab(id) {
   activeId = id;
 
   persistIndex();
-  renderTabs();
+
+  // Only the highlight moves, so update classes instead of rebuilding the
+  // list (which would replay every tab's entrance animation).
+  tabListEl.querySelectorAll(".tab-item").forEach((item) => {
+    item.classList.toggle("active", item.dataset.id === id);
+    if (item.dataset.id === id) item.scrollIntoView({ block: "nearest" });
+  });
+  updateDocumentTitle();
   loadActiveIntoEditor();
 
-  resetFindState();
+  onActiveTabChanged();
 }
 
 function cycleTab(direction) {
@@ -118,7 +291,13 @@ function flushCurrentEditorContent() {
   if (!tab) return;
 
   tab.content = editor.value;
+  tab.view = {
+    start: editor.selectionStart,
+    end: editor.selectionEnd,
+    scrollTop: editor.scrollTop,
+  };
 
+  if (pendingDraftTab === tab) pendingDraftTab = null;
   window.api.saveDraft(tab.id, tab.content);
 }
 
@@ -127,104 +306,160 @@ function loadActiveIntoEditor() {
 
   editor.value = tab ? tab.content : "";
 
+  const view = tab && tab.view;
+  editor.setSelectionRange(view ? view.start : 0, view ? view.end : 0);
+  editor.scrollTop = view ? view.scrollTop : 0;
+
+  countsDirty = true;
+  replayAnimation(editor, "switching");
   editor.focus();
 
   updateStatus();
 }
 
+function replayAnimation(el, className) {
+  el.classList.remove(className);
+  void el.offsetWidth;
+  el.classList.add(className);
+}
+
 // =========================================================
-// CONFIRM DIALOG (themed replacement for window.confirm)
+// DIALOG (themed replacement for window.confirm / alert)
 // =========================================================
 
 const confirmDialog = document.getElementById("confirm-dialog");
 const confirmMessage = document.getElementById("confirm-message");
-const confirmYesBtn = document.getElementById("confirm-yes-btn");
-const confirmNoBtn = document.getElementById("confirm-no-btn");
+const confirmActions = document.getElementById("confirm-actions");
 const confirmForm = document.getElementById("confirm-form");
 
-function showConfirmDialog(message) {
-  return new Promise((resolve) => {
-    confirmMessage.textContent = message;
+confirmForm.addEventListener("submit", (e) => e.preventDefault());
 
+// buttons: [{ label, value, primary }]. Escape resolves with the last value.
+function showDialog({ message, buttons }) {
+  return new Promise((resolve) => {
+    const cancelValue = buttons[buttons.length - 1].value;
     let settled = false;
 
-    function cleanup() {
-      confirmYesBtn.removeEventListener("click", onYes);
-      confirmNoBtn.removeEventListener("click", onNo);
-      confirmDialog.removeEventListener("close", onClose);
-      confirmForm.removeEventListener("submit", onSubmit);
-    }
-
-    function finish(result) {
+    function finish(value) {
       if (settled) return;
       settled = true;
-      cleanup();
-      resolve(result);
-    }
-
-    function onYes() {
-      finish(true);
-      confirmDialog.close();
-    }
-
-    function onNo() {
-      finish(false);
-      confirmDialog.close();
+      confirmDialog.removeEventListener("close", onClose);
+      resolve(value);
+      if (confirmDialog.open) confirmDialog.close();
     }
 
     function onClose() {
-      finish(false);
+      finish(cancelValue);
     }
 
-    function onSubmit(e) {
-      e.preventDefault();
-      onNo();
-    }
+    confirmMessage.textContent = message;
+    confirmActions.replaceChildren();
 
-    confirmYesBtn.addEventListener("click", onYes);
-    confirmNoBtn.addEventListener("click", onNo);
+    buttons.forEach(({ label, value, primary }) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = label;
+      if (primary) btn.className = "primary-btn";
+      btn.addEventListener("click", () => finish(value));
+      confirmActions.appendChild(btn);
+    });
+
     confirmDialog.addEventListener("close", onClose);
-    confirmForm.addEventListener("submit", onSubmit);
-
     confirmDialog.showModal();
-    confirmNoBtn.focus();
+    (confirmActions.querySelector(".primary-btn") || confirmActions.lastElementChild).focus();
+  });
+}
+
+function showError(message) {
+  return showDialog({
+    message,
+    buttons: [{ label: "OK", value: "ok", primary: true }],
+  });
+}
+
+let toastTimer = null;
+
+function showToast(message) {
+  toast.textContent = message;
+  replayAnimation(toast, "visible");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove("visible"), 1800);
+}
+
+// =========================================================
+// CLOSE / RENAME TABS
+// =========================================================
+
+function animateTabOut(id) {
+  const item = tabListEl.querySelector(`.tab-item[data-id="${id}"]`);
+
+  if (!item || reducedMotion.matches) return Promise.resolve();
+
+  item.classList.add("closing");
+
+  return new Promise((resolve) => {
+    item.addEventListener("animationend", resolve, { once: true });
+    setTimeout(resolve, 260);
   });
 }
 
 async function closeTab(id) {
-  const idx = tabs.findIndex((t) => t.id === id);
+  const tab = tabs.find((t) => t.id === id);
 
-  if (idx === -1) return;
+  if (!tab || closingTabIds.has(id)) return;
 
-  const tab = tabs[idx];
+  if (tab.id === activeId) tab.content = editor.value;
 
-  const hasWrittenContent =
-    tab && tab.content && tab.content.trim().length > 0 && tab.dirty !== false;
+  closingTabIds.add(id);
 
-  if (hasWrittenContent) {
-    const shouldClose = await showConfirmDialog(
-      "This tab has unsaved content. Do you want to exit?",
-    );
+  try {
+    if (isDirty(tab)) {
+      const choice = await showDialog({
+        message: `Do you want to save changes to “${tab.title}”?`,
+        buttons: [
+          { label: "Save", value: "save", primary: true },
+          { label: "Don't Save", value: "discard" },
+          { label: "Cancel", value: "cancel" },
+        ],
+      });
 
-    if (!shouldClose) return;
+      if (choice === "cancel") return;
+      if (choice === "save" && !(await saveTab(tab))) return;
+    }
+
+    await animateTabOut(id);
+
+    const idx = tabs.findIndex((t) => t.id === id);
+
+    if (idx === -1) return;
+
+    tabs.splice(idx, 1);
+
+    if (pendingDraftTab === tab) {
+      clearTimeout(saveTimer);
+      pendingDraftTab = null;
+    }
+
+    window.api.deleteNote(id);
+
+    if (tabs.length === 0) {
+      activeId = null;
+      createTab();
+      return;
+    }
+
+    if (activeId === id) {
+      activeId = tabs[Math.max(0, idx - 1)].id;
+
+      loadActiveIntoEditor();
+      onActiveTabChanged();
+    }
+
+    persistIndex();
+    renderTabs();
+  } finally {
+    closingTabIds.delete(id);
   }
-
-  tabs.splice(idx, 1);
-
-  window.api.deleteNote(id);
-
-  if (tabs.length === 0) {
-    createTab();
-  } else if (activeId === id) {
-    activeId = tabs[Math.max(0, idx - 1)].id;
-
-    loadActiveIntoEditor();
-  }
-
-  persistIndex();
-  renderTabs();
-
-  resetFindState();
 }
 
 function renameTab(id, newTitle) {
@@ -237,6 +472,66 @@ function renameTab(id, newTitle) {
   persistIndex();
   renderTabs();
 }
+
+function updateDocumentTitle() {
+  const activeTab = getActiveTab();
+  documentTitleText.textContent = activeTab ? activeTab.title : "";
+  documentTitleDirty.hidden = !activeTab || !isDirty(activeTab);
+  documentTitle.hidden = !activeTab;
+}
+
+function startDocumentTitleEdit() {
+  const activeTab = getActiveTab();
+  if (!activeTab || editingDocumentTitle || !findControls.hidden) return;
+
+  editingDocumentTitle = true;
+  documentTitleTargetId = activeTab.id;
+  documentTitleInput.value = activeTab.title;
+  documentTitle.classList.add("editing");
+  documentTitleText.hidden = true;
+  documentTitleDirty.hidden = true;
+  documentTitleInput.hidden = false;
+  documentTitleActions.hidden = false;
+  documentTitleInput.focus();
+  documentTitleInput.select();
+}
+
+function finishDocumentTitleEdit(save) {
+  if (!editingDocumentTitle) return;
+
+  const title = documentTitleInput.value;
+  const targetId = documentTitleTargetId;
+
+  editingDocumentTitle = false;
+  documentTitleTargetId = null;
+  documentTitle.classList.remove("editing");
+  documentTitleInput.hidden = true;
+  documentTitleActions.hidden = true;
+  documentTitleText.hidden = false;
+
+  if (save && targetId) {
+    renameTab(targetId, title);
+  } else {
+    updateDocumentTitle();
+  }
+}
+
+documentTitleText.addEventListener("dblclick", startDocumentTitleEdit);
+document
+  .getElementById("document-title-confirm")
+  .addEventListener("click", () => finishDocumentTitleEdit(true));
+document
+  .getElementById("document-title-cancel")
+  .addEventListener("click", () => finishDocumentTitleEdit(false));
+documentTitleInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    finishDocumentTitleEdit(true);
+  } else if (event.key === "Escape") {
+    event.preventDefault();
+    finishDocumentTitleEdit(false);
+  }
+});
 
 // =========================================================
 // DRAG AND DROP TAB REORDERING
@@ -261,40 +556,7 @@ function clearSplitClasses() {
     .querySelectorAll(".drag-split-before, .drag-split-after")
     .forEach((el) => {
       el.classList.remove("drag-split-before", "drag-split-after");
-
-      el.style.transform = "";
-      el.style.marginTop = "";
-      el.style.marginBottom = "";
-      el.style.boxShadow = "";
     });
-}
-
-function applySplitMotion(referenceEl, before) {
-  clearSplitClasses();
-
-  if (!referenceEl) return;
-
-  const targetClass = before ? "drag-split-before" : "drag-split-after";
-
-  referenceEl.classList.add(targetClass);
-
-  if (before) {
-    referenceEl.style.transform = "translateY(-8px)";
-
-    referenceEl.style.marginTop = "8px";
-
-    referenceEl.style.marginBottom = "-4px";
-
-    referenceEl.style.boxShadow = "0 -6px 16px rgba(13, 0, 109, 0.08)";
-  } else {
-    referenceEl.style.transform = "translateY(8px)";
-
-    referenceEl.style.marginTop = "-4px";
-
-    referenceEl.style.marginBottom = "8px";
-
-    referenceEl.style.boxShadow = "0 6px 16px rgba(13, 0, 109, 0.08)";
-  }
 }
 
 function placePlaceholder(referenceEl, before) {
@@ -303,28 +565,18 @@ function placePlaceholder(referenceEl, before) {
   const samePosition =
     lastPlaceholderAnchor === referenceEl && lastPlaceholderBefore === before;
 
-  if (!samePosition) {
-    lastPlaceholderAnchor = referenceEl;
+  if (samePosition) return;
 
-    lastPlaceholderBefore = before;
+  lastPlaceholderAnchor = referenceEl;
+  lastPlaceholderBefore = before;
 
-    clearSplitClasses();
+  clearSplitClasses();
 
-    if (referenceEl) {
-      if (before) {
-        tabListEl.insertBefore(ph, referenceEl);
-      } else {
-        tabListEl.insertBefore(ph, referenceEl.nextSibling);
-      }
-
-      applySplitMotion(referenceEl, before);
-    } else {
-      if (ph.parentElement) {
-        ph.parentElement.removeChild(ph);
-      }
-
-      tabListEl.appendChild(ph);
-    }
+  if (referenceEl) {
+    tabListEl.insertBefore(ph, before ? referenceEl : referenceEl.nextSibling);
+    referenceEl.classList.add(before ? "drag-split-before" : "drag-split-after");
+  } else {
+    tabListEl.appendChild(ph);
   }
 }
 
@@ -350,15 +602,9 @@ function getPlaceholderInsertIndex() {
 
   if (phIdx === -1) return -1;
 
-  let count = 0;
-
-  for (let i = 0; i < phIdx; i++) {
-    if (children[i].classList.contains("tab-item")) {
-      count++;
-    }
-  }
-
-  return count;
+  return children
+    .slice(0, phIdx)
+    .filter((el) => el.classList.contains("tab-item")).length;
 }
 
 function updatePlaceholder(clientY) {
@@ -367,100 +613,25 @@ function updatePlaceholder(clientY) {
   );
 
   if (!items.length) {
-    if (dropPlaceholder && !dropPlaceholder.parentElement) {
-      tabListEl.appendChild(dropPlaceholder);
-    }
-
+    placePlaceholder(null, false);
     return;
   }
 
-  let targetIndex = 0;
-  let targetEl = null;
-  let before = true;
+  let targetEl = items[items.length - 1];
+  let before = false;
 
-  for (let i = 0; i < items.length; i++) {
-    const item = items[i];
-
+  for (const item of items) {
     const rect = item.getBoundingClientRect();
 
     if (clientY < rect.top + rect.height / 2) {
       targetEl = item;
       before = true;
-      targetIndex = i;
       break;
     }
-
-    targetIndex = i + 1;
-    before = false;
-    targetEl = item;
-  }
-
-  if (!targetEl && items.length) {
-    targetIndex = items.length;
-
-    before = false;
-
-    targetEl = items[items.length - 1];
   }
 
   placePlaceholder(targetEl, before);
 }
-
-tabListEl.addEventListener("dragover", (e) => {
-  e.preventDefault();
-
-  e.dataTransfer.dropEffect = "move";
-
-  if (!tabListEl.contains(e.target)) {
-    removePlaceholder();
-    return;
-  }
-
-  updatePlaceholder(e.clientY);
-});
-
-tabListEl.addEventListener("drop", (e) => {
-  e.preventDefault();
-
-  const draggedId = e.dataTransfer.getData("text/plain");
-
-  const insertIdx = getPlaceholderInsertIndex();
-
-  removePlaceholder();
-
-  if (!draggedId || insertIdx === -1) {
-    return;
-  }
-
-  const fromIdx = tabs.findIndex((t) => t.id === draggedId);
-
-  if (fromIdx === -1) return;
-
-  const [moved] = tabs.splice(fromIdx, 1);
-
-  let targetIdx = insertIdx;
-
-  if (fromIdx < insertIdx) {
-    targetIdx -= 1;
-  }
-
-  targetIdx = Math.max(0, Math.min(targetIdx, tabs.length));
-
-  tabs.splice(targetIdx, 0, moved);
-
-  persistIndex();
-  renderTabs();
-});
-
-window.addEventListener("dragend", () => {
-  removePlaceholder();
-});
-
-window.addEventListener("drop", (e) => {
-  if (!document.getElementById("sidebar").contains(e.target)) {
-    removePlaceholder();
-  }
-});
 
 let customDragState = null;
 let pendingDragState = null;
@@ -471,8 +642,9 @@ function startCustomDrag(state) {
   const preview = item.cloneNode(true);
 
   item.classList.add("dragging");
+  document.body.classList.add("tab-dragging");
   preview.classList.add("tab-drag-preview");
-  preview.classList.remove("active");
+  preview.classList.remove("active", "entering");
   preview.style.left = `${rect.left}px`;
   preview.style.top = `${rect.top}px`;
   preview.style.width = `${rect.width}px`;
@@ -498,6 +670,7 @@ function finishCustomDrag() {
   const insertIdx = getPlaceholderInsertIndex();
 
   item.classList.remove("dragging");
+  document.body.classList.remove("tab-dragging");
   preview.remove();
   customDragState = null;
   removePlaceholder();
@@ -528,9 +701,8 @@ window.addEventListener("pointermove", (e) => {
   if (pendingDragState) {
     const movedX = e.clientX - pendingDragState.startX;
     const movedY = e.clientY - pendingDragState.startY;
-    const movedDistance = Math.hypot(movedX, movedY);
 
-    if (movedDistance >= 6) {
+    if (Math.hypot(movedX, movedY) >= 6) {
       startCustomDrag({
         ...pendingDragState,
         pointerEvent: e,
@@ -571,77 +743,67 @@ window.addEventListener("pointercancel", () => {
 // =========================================================
 
 function renderTabs() {
-  tabListEl.innerHTML = "";
+  tabListEl.replaceChildren();
 
-  tabs.forEach((tab, index) => {
+  tabs.forEach((tab) => {
     const item = document.createElement("div");
 
-    item.className = "tab-item" + (tab.id === activeId ? " active" : "");
+    item.className = "tab-item";
+    item.classList.toggle("active", tab.id === activeId);
+    item.classList.toggle("dirty", isDirty(tab));
+    item.classList.toggle("entering", tab.id === enteringTabId);
+    item.dataset.id = tab.id;
+    item.title = tab.filePath || tab.title;
 
-    item.title = tab.title;
-
-    item.draggable = false;
-
-    const shortLabel = document.createElement("span");
-
-    shortLabel.className = "tab-short";
-
-    shortLabel.textContent = String(index + 1);
+    const badge = document.createElement("span");
+    badge.className = "tab-badge";
+    badge.style.backgroundColor = TAB_COLORS[tab.color];
+    if (isUntitled(tab.title)) {
+      badge.innerHTML = PAGE_ICON;
+    } else {
+      badge.textContent = getInitials(tab.title);
+    }
 
     const label = document.createElement("span");
-
     label.className = "tab-title";
-
     label.textContent = tab.title;
 
-    const actions = document.createElement("span");
+    const dirtyDot = document.createElement("span");
+    dirtyDot.className = "tab-dirty dirty-dot";
+    dirtyDot.title = "Unsaved changes";
 
+    const actions = document.createElement("span");
     actions.className = "tab-actions";
 
     const renameBtn = document.createElement("button");
-
     renameBtn.className = "tab-action-btn";
-
     renameBtn.title = "Rename";
-
     renameBtn.innerHTML =
       '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
-
     renameBtn.addEventListener("click", (e) => {
       e.stopPropagation();
-
       openRenameDialog(tab);
     });
 
     const closeBtn = document.createElement("button");
-
     closeBtn.className = "tab-action-btn";
-
     closeBtn.title = "Close";
-
     closeBtn.innerHTML =
       '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>';
-
     closeBtn.addEventListener("click", (e) => {
       e.stopPropagation();
-
       closeTab(tab.id);
     });
 
-    actions.appendChild(renameBtn);
-
-    actions.appendChild(closeBtn);
-
-    item.appendChild(shortLabel);
-
-    item.appendChild(label);
-
-    item.appendChild(actions);
+    actions.append(renameBtn, closeBtn);
+    item.append(badge, label, dirtyDot, actions);
 
     item.addEventListener("click", () => {
       switchTab(tab.id);
     });
 
+    // Pointer capture is deliberately not used here: it retargets clicks to
+    // the row, which used to swallow the double-click-to-rename gesture.
     item.addEventListener("pointerdown", (e) => {
       if (e.button !== 0 || e.target.closest("button")) return;
 
@@ -651,18 +813,23 @@ function renderTabs() {
         startX: e.clientX,
         startY: e.clientY,
       };
-
-      item.setPointerCapture(e.pointerId);
     });
 
-    label.addEventListener("dblclick", (e) => {
-      e.stopPropagation();
+    item.addEventListener("dblclick", (e) => {
+      if (e.target.closest("button")) return;
 
       openRenameDialog(tab);
     });
 
     tabListEl.appendChild(item);
   });
+
+  enteringTabId = null;
+
+  const activeItem = tabListEl.querySelector(".tab-item.active");
+  if (activeItem) activeItem.scrollIntoView({ block: "nearest" });
+
+  updateDocumentTitle();
 }
 
 // =========================================================
@@ -693,10 +860,6 @@ function confirmRename() {
   renameDialog.close();
 }
 
-document
-  .getElementById("rename-ok-btn")
-  .addEventListener("click", confirmRename);
-
 document.getElementById("rename-close-btn").addEventListener("click", () => {
   renameDialog.close();
 });
@@ -708,59 +871,75 @@ document.getElementById("rename-form").addEventListener("submit", (e) => {
 });
 
 // =========================================================
-// FIND
+// FIND / REPLACE
 // =========================================================
-
-const findDialog = document.getElementById("find-dialog");
+//
+// Find and Replace share one search: the same term (both "Find" inputs are
+// kept in sync), the same options and the same list of matches. Navigation
+// always moves relative to the editor's selection, so Find Next continues
+// from wherever you clicked or from the match you just replaced.
 
 const findForm = document.getElementById("find-form");
-
 const findInput = document.getElementById("find-input");
-
 const findStatus = document.getElementById("find-status");
+const replaceForm = document.getElementById("replace-form");
+const replaceFindInput = document.getElementById("replace-find-input");
+const replaceWithInput = document.getElementById("replace-with-input");
+const replaceStatus = document.getElementById("replace-status");
 
-const findNextBtn = document.getElementById("find-next-btn");
-
-const findPrevBtn = document.getElementById("find-prev-btn");
-
-const findCloseBtn = document.getElementById("find-close-btn");
-
-// ---------------------------------------------------------
-// FIND STATE
-// ---------------------------------------------------------
-
-let findMatches = [];
+const findOptions = { matchCase: false, wholeWord: false };
+let findMode = null; // "find" | "replace" | null (closed)
+let findMatches = []; // [{ start, end }]
 let currentFindMatch = -1;
-let lastFindTerm = "";
+let findAnchor = 0; // where incremental search starts looking from
 
-// ---------------------------------------------------------
-// EXACT SEARCH
-// ---------------------------------------------------------
+function activeFindInput() {
+  return findMode === "replace" ? replaceFindInput : findInput;
+}
 
-function getMatchIndices(term) {
+function activeFindStatus() {
+  return findMode === "replace" ? replaceStatus : findStatus;
+}
+
+function escapeRegExp(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// A regex (rather than lower-casing both strings) keeps match offsets exact
+// even for characters whose lower-case form has a different length.
+function getMatches(term, text = editor.value) {
   if (!term) return [];
 
-  const value = editor.value.toLocaleLowerCase();
+  let source = escapeRegExp(term);
 
-  const search = term.toLocaleLowerCase();
-
-  const matches = [];
-
-  let index = 0;
-
-  while (index <= value.length - search.length) {
-    const found = value.indexOf(search, index);
-
-    if (found === -1) {
-      break;
-    }
-
-    matches.push(found);
-
-    index = found + search.length;
+  if (findOptions.wholeWord) {
+    source = `(?<![\\p{L}\\p{N}_])${source}(?![\\p{L}\\p{N}_])`;
   }
 
-  return matches;
+  const pattern = new RegExp(source, findOptions.matchCase ? "gu" : "giu");
+
+  return Array.from(text.matchAll(pattern), (m) => ({
+    start: m.index,
+    end: m.index + m[0].length,
+  }));
+}
+
+function refreshMatches() {
+  findMatches = getMatches(activeFindInput().value);
+}
+
+function updateFindStatus() {
+  const status = activeFindStatus();
+
+  if (!activeFindInput().value) {
+    status.textContent = "";
+  } else if (!findMatches.length) {
+    status.textContent = "No matches";
+  } else if (currentFindMatch === -1) {
+    status.textContent = `${findMatches.length}`;
+  } else {
+    status.textContent = `${currentFindMatch + 1} of ${findMatches.length}`;
+  }
 }
 
 // ---------------------------------------------------------
@@ -768,25 +947,16 @@ function getMatchIndices(term) {
 // ---------------------------------------------------------
 //
 // A match can visually wrap across two or more lines when word wrap
-// splits it (e.g. searching "this and that" where "this and" ends
-// one line and "that" starts the next). A single bounding box around
-// the whole match would cover both lines' full combined height,
-// which reads as one oversized, wrongly-spaced highlight.
-//
-// The fix: render the match into a hidden mirror of the editor (same
-// font, padding, width, wrapping), wrap it in a <span>, then call
-// span.getClientRects(). For text that wraps, this returns ONE rect
-// PER VISUAL LINE the span occupies -- exactly the fragments we want
-// to highlight. We then draw one highlight <div> per rect, pulled
-// from a small reusable pool so we're not constantly creating and
-// destroying DOM nodes as matches change.
-//
+// splits it. The match is rendered into a hidden mirror of the editor
+// (same font, padding, width, wrapping) inside a <span>, and
+// span.getClientRects() returns one rect per visual line -- one
+// highlight box is drawn per rect. The rects are in content
+// coordinates, so they are cached and only re-measured when the
+// layout changes (resize, zoom, font, wrap), not on every scroll.
 
 let activeHighlightRange = null; // { start, end } of the currently shown match
-
-const editorArea = document.getElementById("editor-area");
-
-let highlightPool = [];
+let highlightRects = [];
+const highlightPool = [];
 
 function ensureHighlightPool(count) {
   while (highlightPool.length < count) {
@@ -855,13 +1025,8 @@ function getMatchRects(start, end) {
   document.body.appendChild(mirror);
 
   const mirrorRect = mirror.getBoundingClientRect();
-
-  // getClientRects() returns one DOMRect per visual line fragment of
-  // the span -- this is the key to fixing multi-line matches.
   const clientRects = Array.from(markSpan.getClientRects());
-
   const fallbackHeight = parseFloat(style.lineHeight) || 18;
-
   const sourceRects = clientRects.length
     ? clientRects
     : [markSpan.getBoundingClientRect()];
@@ -878,509 +1043,412 @@ function getMatchRects(start, end) {
   return rects;
 }
 
-function drawHighlightRects(rects) {
-  ensureHighlightPool(rects.length);
+function drawHighlightRects() {
+  ensureHighlightPool(highlightRects.length);
 
-  rects.forEach((rect, i) => {
+  highlightRects.forEach((rect, i) => {
     const el = highlightPool[i];
 
     el.style.top = `${rect.top - editor.scrollTop}px`;
     el.style.left = `${rect.left - editor.scrollLeft}px`;
     el.style.width = `${rect.width}px`;
     el.style.height = `${rect.height}px`;
-    el.style.display = "block";
   });
 }
 
 function hideFindHighlight() {
   activeHighlightRange = null;
+  highlightRects = [];
 
   highlightPool.forEach((el) => {
     el.style.display = "none";
   });
 }
 
-// Keep the highlight(s) aligned if the person manually scrolls the editor.
-editor.addEventListener("scroll", () => {
+function remeasureHighlight() {
   if (!activeHighlightRange) return;
 
-  const rects = getMatchRects(
+  highlightRects = getMatchRects(
     activeHighlightRange.start,
     activeHighlightRange.end,
   );
+  drawHighlightRects();
+}
 
-  drawHighlightRects(rects);
+editor.addEventListener("scroll", () => {
+  if (activeHighlightRange) drawHighlightRects();
 });
 
-// ---------------------------------------------------------
-// RESET FIND
-// ---------------------------------------------------------
-
-function resetFindState() {
-  findMatches = [];
-  currentFindMatch = -1;
-  lastFindTerm = "";
-
-  if (findStatus) {
-    findStatus.textContent = "";
-  }
-
-  hideFindHighlight();
-}
-
-// ---------------------------------------------------------
-// UPDATE FIND STATUS
-// ---------------------------------------------------------
-
-function updateFindStatus() {
-  const term = findInput.value;
-
-  if (!term) {
-    findStatus.textContent = "";
-
-    return;
-  }
-
-  if (findMatches.length === 0) {
-    findStatus.textContent = "No matches";
-
-    return;
-  }
-
-  if (currentFindMatch === -1) {
-    findStatus.textContent = `${findMatches.length} match${
-      findMatches.length === 1 ? "" : "es"
-    }`;
-
-    return;
-  }
-
-  findStatus.textContent = `${currentFindMatch + 1} of ${findMatches.length}`;
-}
-
-// ---------------------------------------------------------
-// REFRESH FIND RESULTS
-// ---------------------------------------------------------
-
-function refreshFindMatches(resetPosition = true) {
-  const term = findInput.value;
-
-  if (!term) {
-    resetFindState();
-    return;
-  }
-
-  const termChanged = term !== lastFindTerm;
-
-  if (termChanged || resetPosition) {
-    currentFindMatch = -1;
-    hideFindHighlight();
-  }
-
-  lastFindTerm = term;
-
-  findMatches = getMatchIndices(term);
-
-  if (findMatches.length === 0) {
-    currentFindMatch = -1;
-    hideFindHighlight();
-  }
-
-  updateFindStatus();
-}
-
-// ---------------------------------------------------------
-// OPEN FIND / OPEN REPLACE
-// ---------------------------------------------------------
-
-function openFind() {
-  if (replaceDialog.open) {
-    replaceDialog.close();
-  }
-
-  if (!findDialog.open) {
-    findDialog.show();
-  }
-
-  if (editor.selectionStart !== editor.selectionEnd && !findInput.value) {
-    findInput.value = editor.value
-      .slice(editor.selectionStart, editor.selectionEnd)
-      .trim();
-  }
-
-  refreshFindMatches(true);
-
-  findInput.focus();
-
-  findInput.select();
-}
+editor.addEventListener("transitionend", (event) => {
+  if (event.propertyName === "font-size") remeasureHighlight();
+});
 
 // ---------------------------------------------------------
 // REVEAL A MATCH IN THE EDITOR
 // ---------------------------------------------------------
 
-function revealMatchInEditor(start, end, returnFocusEl) {
+function revealMatchInEditor(start, end) {
   editor.setSelectionRange(start, end);
 
-  const rects = getMatchRects(start, end);
-
-  const firstRect = rects[0];
-
-  // Scroll deterministically -- this does not depend on the editor
-  // being focused, so it works reliably every time.
-  const scrollTarget =
-    firstRect.top - editor.clientHeight / 2 + firstRect.height / 2;
-
-  editor.scrollTop = Math.max(0, scrollTarget);
-
-  // Draw a highlight box for every visual line the match spans.
   activeHighlightRange = { start, end };
+  highlightRects = getMatchRects(start, end);
 
-  drawHighlightRects(rects);
+  const first = highlightRects[0];
+  const last = highlightRects[highlightRects.length - 1];
+  const margin = Math.min(48, editor.clientHeight / 4);
 
-  if (returnFocusEl) {
-    returnFocusEl.focus();
+  // Only scroll when the match is out of view, so stepping through
+  // nearby matches doesn't make the page jump around.
+  if (
+    first.top < editor.scrollTop + margin ||
+    last.top + last.height > editor.scrollTop + editor.clientHeight - margin
+  ) {
+    editor.scrollTop = Math.max(
+      0,
+      first.top - editor.clientHeight / 2 + first.height / 2,
+    );
   }
+
+  if (
+    first.left < editor.scrollLeft + margin ||
+    first.left + first.width > editor.scrollLeft + editor.clientWidth - margin
+  ) {
+    editor.scrollLeft = Math.max(0, first.left - editor.clientWidth / 2);
+  }
+
+  drawHighlightRects();
+  highlightPool.slice(0, highlightRects.length).forEach((el) => {
+    replayAnimation(el, "pulse");
+  });
 }
 
 function revealFindMatch(matchIndex) {
-  if (matchIndex < 0 || matchIndex >= findMatches.length) {
+  currentFindMatch = matchIndex;
+
+  const { start, end } = findMatches[matchIndex];
+
+  revealMatchInEditor(start, end);
+  updateFindStatus();
+
+  // Keep typing/Enter flowing into the find box after clicking ↑ / ↓.
+  if (findMode && document.activeElement !== editor) {
+    activeFindInput().focus();
+  }
+}
+
+function noMatchFound() {
+  currentFindMatch = -1;
+  hideFindHighlight();
+  updateFindStatus();
+
+  const input = activeFindInput();
+  if (findMode && input.value) replayAnimation(input, "shake");
+}
+
+// ---------------------------------------------------------
+// NAVIGATION
+// ---------------------------------------------------------
+
+function goToMatch(direction) {
+  refreshMatches();
+
+  if (!findMatches.length) {
+    noMatchFound();
     return;
   }
 
-  const term = findInput.value;
+  let index;
 
-  const start = findMatches[matchIndex];
+  if (direction < 0) {
+    const selStart = editor.selectionStart;
+    index = findMatches.findLastIndex((m) => m.start < selStart);
+    if (index === -1) index = findMatches.length - 1;
+  } else {
+    const selEnd = editor.selectionEnd;
+    const selStart = editor.selectionStart;
+    index = findMatches.findIndex(
+      (m) => m.start >= selEnd && !(m.start === selStart && m.end === selEnd),
+    );
+    if (index === -1) index = 0;
+  }
 
-  const end = start + term.length;
+  revealFindMatch(index);
+}
 
-  currentFindMatch = matchIndex;
+// While typing, jump to the first match at or after where the search
+// started, so the results follow the term without skipping ahead.
+function revealNearestMatch() {
+  refreshMatches();
 
-  revealMatchInEditor(start, end, findInput);
+  if (!findMatches.length) {
+    noMatchFound();
+    return;
+  }
 
+  let index = findMatches.findIndex((m) => m.start >= findAnchor);
+  if (index === -1) index = 0;
+
+  revealFindMatch(index);
+}
+
+function findNext() {
+  if (!activeFindInput().value) {
+    openFindBar("find");
+    return;
+  }
+
+  goToMatch(1);
+}
+
+function findPrevious() {
+  if (!activeFindInput().value) {
+    openFindBar("find");
+    return;
+  }
+
+  goToMatch(-1);
+}
+
+// ---------------------------------------------------------
+// OPEN / CLOSE
+// ---------------------------------------------------------
+
+function getSingleLineSelection() {
+  const selected = editor.value.slice(editor.selectionStart, editor.selectionEnd);
+  return selected && !selected.includes("\n") ? selected : "";
+}
+
+function openFindBar(mode) {
+  finishDocumentTitleEdit(false);
+
+  const wasOpen = Boolean(findMode);
+  const selected = wasOpen ? "" : getSingleLineSelection();
+
+  findMode = mode;
+  findControls.hidden = false;
+  findForm.hidden = mode !== "find";
+  replaceForm.hidden = mode !== "replace";
+  topbar.classList.add("find-open");
+
+  const input = activeFindInput();
+  if (selected) setFindTerm(selected);
+
+  if (!wasOpen) findAnchor = editor.selectionStart;
+
+  input.focus();
+  input.select();
+
+  if (input.value && !wasOpen) {
+    revealNearestMatch();
+  } else {
+    refreshMatches();
+    currentFindMatch = activeHighlightRange
+      ? findMatches.findIndex((m) => m.start === activeHighlightRange.start)
+      : -1;
+    updateFindStatus();
+  }
+}
+
+function closeFindBar() {
+  if (!findMode) return;
+
+  findMode = null;
+  findControls.hidden = true;
+  topbar.classList.remove("find-open");
+  currentFindMatch = -1;
+  findStatus.textContent = "";
+  replaceStatus.textContent = "";
+  hideFindHighlight();
+  editor.focus();
+}
+
+function setFindTerm(value) {
+  findInput.value = value;
+  replaceFindInput.value = value;
+}
+
+// Text changed underneath the search: recount, but don't move the caret.
+function onEditorContentChanged() {
+  hideFindHighlight();
+
+  if (!findMode) return;
+
+  refreshMatches();
+  currentFindMatch = -1;
+  updateFindStatus();
+}
+
+function onActiveTabChanged() {
+  hideFindHighlight();
+  currentFindMatch = -1;
+
+  if (!findMode) return;
+
+  findAnchor = 0;
+  refreshMatches();
   updateFindStatus();
 }
 
 // ---------------------------------------------------------
-// FIND NEXT
+// FIND INPUTS, OPTIONS AND BUTTONS
 // ---------------------------------------------------------
 
-function findNext() {
-  const term = findInput.value;
+[findInput, replaceFindInput].forEach((inputEl) => {
+  inputEl.addEventListener("input", () => {
+    setFindTerm(inputEl.value);
 
-  if (!term) {
-    refreshFindMatches(true);
-    return;
-  }
-
-  findMatches = getMatchIndices(term);
-
-  lastFindTerm = term;
-
-  if (findMatches.length === 0) {
-    currentFindMatch = -1;
-
-    hideFindHighlight();
-
-    updateFindStatus();
-
-    return;
-  }
-
-  let nextIndex;
-
-  if (currentFindMatch === -1) {
-    nextIndex = 0;
-  } else {
-    nextIndex = currentFindMatch + 1;
-
-    if (nextIndex >= findMatches.length) {
-      nextIndex = 0;
-    }
-  }
-
-  revealFindMatch(nextIndex);
-}
-
-// ---------------------------------------------------------
-// FIND PREVIOUS
-// ---------------------------------------------------------
-
-function findPrevious() {
-  const term = findInput.value;
-
-  if (!term) {
-    refreshFindMatches(true);
-    return;
-  }
-
-  findMatches = getMatchIndices(term);
-
-  lastFindTerm = term;
-
-  if (findMatches.length === 0) {
-    currentFindMatch = -1;
-
-    hideFindHighlight();
-
-    updateFindStatus();
-
-    return;
-  }
-
-  let previousIndex;
-
-  if (currentFindMatch === -1) {
-    previousIndex = findMatches.length - 1;
-  } else {
-    previousIndex = currentFindMatch - 1;
-
-    if (previousIndex < 0) {
-      previousIndex = findMatches.length - 1;
-    }
-  }
-
-  revealFindMatch(previousIndex);
-}
-
-// ---------------------------------------------------------
-// FIND INPUT
-// ---------------------------------------------------------
-
-findInput.addEventListener("input", () => {
-  refreshFindMatches(true);
-});
-
-// ---------------------------------------------------------
-// FIND BUTTONS
-// ---------------------------------------------------------
-
-findNextBtn.addEventListener("click", () => {
-  findNext();
-});
-
-findPrevBtn.addEventListener("click", () => {
-  findPrevious();
-});
-
-findCloseBtn.addEventListener("click", () => {
-  findDialog.close();
-
-  resetFindState();
-});
-
-// ---------------------------------------------------------
-// FIND KEYBOARD
-// ---------------------------------------------------------
-
-findInput.addEventListener("keydown", (event) => {
-  if (event.key === "Enter") {
-    event.preventDefault();
-
-    if (event.shiftKey) {
-      findPrevious();
+    if (inputEl.value) {
+      revealNearestMatch();
     } else {
-      findNext();
+      findMatches = [];
+      currentFindMatch = -1;
+      hideFindHighlight();
+      updateFindStatus();
+    }
+  });
+});
+
+document.querySelectorAll("[data-find-option]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const option = btn.dataset.findOption;
+    findOptions[option] = !findOptions[option];
+
+    document
+      .querySelectorAll(`[data-find-option="${option}"]`)
+      .forEach((el) => el.setAttribute("aria-pressed", String(findOptions[option])));
+
+    findAnchor = activeHighlightRange ? activeHighlightRange.start : editor.selectionStart;
+
+    if (activeFindInput().value) {
+      revealNearestMatch();
     }
 
-    return;
-  }
-
-  if (event.key === "Escape") {
-    event.preventDefault();
-
-    findDialog.close();
-
-    resetFindState();
-  }
+    activeFindInput().focus();
+  });
 });
 
-// ---------------------------------------------------------
-// FIND FORM
-// ---------------------------------------------------------
+document.getElementById("find-next-btn").addEventListener("click", () => goToMatch(1));
+document.getElementById("find-prev-btn").addEventListener("click", () => goToMatch(-1));
+document.getElementById("find-close-btn").addEventListener("click", closeFindBar);
+document.getElementById("show-replace-btn").addEventListener("click", () => openFindBar("replace"));
 
-findForm.addEventListener("submit", (event) => {
-  event.preventDefault();
+document.getElementById("replace-next-btn").addEventListener("click", () => goToMatch(1));
+document.getElementById("replace-prev-btn").addEventListener("click", () => goToMatch(-1));
+document.getElementById("replace-one-btn").addEventListener("click", replaceOne);
+document.getElementById("replace-all-btn").addEventListener("click", replaceAll);
+document.getElementById("replace-close-btn").addEventListener("click", closeFindBar);
 
-  findNext();
-});
-
-// =========================================================
-// REPLACE
-// =========================================================
-
-const replaceDialog = document.getElementById("replace-dialog");
-
-const replaceFindInput = document.getElementById("replace-find-input");
-
-const replaceWithInput = document.getElementById("replace-with-input");
-
-const replaceStatus = document.getElementById("replace-status");
-
-function openReplace() {
-  if (findDialog.open) {
-    findDialog.close();
-    resetFindState();
-  }
-
-  if (!replaceDialog.open) {
-    replaceDialog.show();
-  }
-
-  replaceFindInput.focus();
-}
-
-function replaceFindNext() {
-  const term = replaceFindInput.value;
-
-  if (!term) {
-    replaceStatus.textContent = "";
-
-    hideFindHighlight();
-
-    return;
-  }
-
-  const matches = getMatchIndices(term);
-
-  if (matches.length === 0) {
-    replaceStatus.textContent = `Cannot find "${term}"`;
-
-    hideFindHighlight();
-
-    return;
-  }
-
-  const start = editor.selectionEnd || 0;
-
-  let nextIdx = matches.find((i) => i >= start);
-
-  if (nextIdx === undefined) {
-    nextIdx = matches[0];
-  }
-
-  const matchNumber = matches.indexOf(nextIdx) + 1;
-
-  revealMatchInEditor(nextIdx, nextIdx + term.length, replaceFindInput);
-
-  replaceStatus.textContent = `Match ${matchNumber} of ${matches.length}`;
-}
-
-function replaceOne() {
-  const term = replaceFindInput.value;
-
-  const withText = replaceWithInput.value;
-
-  if (!term) return;
-
-  const selected = editor.value.slice(
-    editor.selectionStart,
-    editor.selectionEnd,
-  );
-
-  if (selected.toLowerCase() === term.toLowerCase()) {
-    const before = editor.value.slice(0, editor.selectionStart);
-
-    const after = editor.value.slice(editor.selectionEnd);
-
-    editor.value = before + withText + after;
-
-    const tab = getActiveTab();
-
-    if (tab) {
-      tab.content = editor.value;
-
-      scheduleDraftSave(tab);
-    }
-
-    revealMatchInEditor(
-      before.length,
-      before.length + withText.length,
-      replaceFindInput,
-    );
-  }
-
-  replaceFindNext();
-}
-
-function escapeRegExp(str) {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function replaceAll() {
-  const term = replaceFindInput.value;
-
-  const withText = replaceWithInput.value;
-
-  if (!term) return;
-
-  const pattern = new RegExp(escapeRegExp(term), "gi");
-
-  const count = (editor.value.match(pattern) || []).length;
-
-  editor.value = editor.value.replace(pattern, withText);
-
-  const tab = getActiveTab();
-
-  if (tab) {
-    tab.content = editor.value;
-
-    scheduleDraftSave(tab);
-  }
-
-  updateStatus();
-
-  hideFindHighlight();
-
-  replaceStatus.textContent = `Replaced ${count} occurrence(s)`;
-}
-
-document
-  .getElementById("replace-next-btn")
-  .addEventListener("click", replaceFindNext);
-
-document
-  .getElementById("replace-one-btn")
-  .addEventListener("click", replaceOne);
-
-document
-  .getElementById("replace-all-btn")
-  .addEventListener("click", replaceAll);
-
-document.getElementById("replace-close-btn").addEventListener("click", () => {
-  replaceDialog.close();
-
-  hideFindHighlight();
-});
-
-document.getElementById("replace-form").addEventListener("submit", (e) => {
-  e.preventDefault();
-
-  replaceFindNext();
-});
-
-// Mirror Find's keyboard behavior (Enter = next match, Escape =
-// close) on both Replace inputs, so the two panels feel identical
-// to use, not just identical to look at.
-[replaceFindInput, replaceWithInput].forEach((inputEl) => {
+// Enter = next match, Shift+Enter = previous, Escape = close, in every
+// find/replace input, so both panels behave the same way.
+[findInput, replaceFindInput, replaceWithInput].forEach((inputEl) => {
   inputEl.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
       event.preventDefault();
 
-      replaceFindNext();
+      if (inputEl === replaceWithInput && (event.ctrlKey || event.metaKey)) {
+        replaceAll();
+      } else if (inputEl === replaceWithInput && !event.shiftKey) {
+        replaceOne();
+      } else {
+        goToMatch(event.shiftKey ? -1 : 1);
+      }
 
       return;
     }
 
     if (event.key === "Escape") {
       event.preventDefault();
-
-      replaceDialog.close();
-
-      hideFindHighlight();
+      closeFindBar();
     }
   });
 });
+
+findForm.addEventListener("submit", (event) => event.preventDefault());
+replaceForm.addEventListener("submit", (event) => event.preventDefault());
+
+// ---------------------------------------------------------
+// REPLACE
+// ---------------------------------------------------------
+
+// Edits go through execCommand so they land on the editor's undo stack
+// (Ctrl+Z works) and fire the normal "input" event (dirty dot, draft save).
+function replaceEditorRange(start, end, text) {
+  if (start === end && !text) return;
+
+  const scrollTop = editor.scrollTop;
+  const returnFocus = document.activeElement;
+
+  editor.focus();
+  editor.setSelectionRange(start, end);
+
+  if (text) {
+    document.execCommand("insertText", false, text);
+  } else {
+    document.execCommand("delete");
+  }
+
+  editor.scrollTop = scrollTop;
+
+  if (returnFocus && returnFocus !== editor && returnFocus !== document.body) {
+    returnFocus.focus();
+  }
+}
+
+function replaceOne() {
+  if (!replaceFindInput.value) return;
+
+  refreshMatches();
+
+  const { selectionStart, selectionEnd } = editor;
+  const selectedIsMatch = findMatches.some(
+    (m) => m.start === selectionStart && m.end === selectionEnd,
+  );
+
+  if (selectedIsMatch) {
+    const replacement = replaceWithInput.value;
+
+    replaceEditorRange(selectionStart, selectionEnd, replacement);
+
+    const caret = selectionStart + replacement.length;
+    editor.setSelectionRange(caret, caret);
+  }
+
+  goToMatch(1);
+}
+
+function replaceAll() {
+  const term = replaceFindInput.value;
+
+  if (!term) return;
+
+  const matches = getMatches(term);
+
+  if (!matches.length) {
+    findMatches = [];
+    noMatchFound();
+    return;
+  }
+
+  const value = editor.value;
+  const replacement = replaceWithInput.value;
+  let result = "";
+  let last = 0;
+
+  matches.forEach((m) => {
+    result += value.slice(last, m.start) + replacement;
+    last = m.end;
+  });
+
+  result += value.slice(last);
+
+  replaceEditorRange(0, value.length, result);
+
+  const caret = matches[0].start;
+  editor.setSelectionRange(caret, caret);
+
+  hideFindHighlight();
+  replaceStatus.textContent = `Replaced ${matches.length}`;
+}
 
 // =========================================================
 // GO TO
@@ -1390,39 +1458,40 @@ const gotoDialog = document.getElementById("goto-dialog");
 
 const gotoInput = document.getElementById("goto-input");
 
+function currentLineNumber() {
+  return editor.value.slice(0, editor.selectionStart).split("\n").length;
+}
+
 function openGoTo() {
+  gotoInput.max = editor.value.split("\n").length;
+  gotoInput.value = currentLineNumber();
+
   gotoDialog.showModal();
 
-  gotoInput.focus();
+  gotoInput.select();
 }
 
 function confirmGoTo() {
-  const lineNum = parseInt(gotoInput.value, 10);
-
-  if (!lineNum || lineNum < 1) {
-    gotoDialog.close();
-
-    return;
-  }
-
   const lines = editor.value.split("\n");
+  const lineNum = Math.min(parseInt(gotoInput.value, 10), lines.length);
+
+  gotoDialog.close();
+
+  if (!lineNum || lineNum < 1) return;
 
   let idx = 0;
 
-  for (let i = 0; i < Math.min(lineNum - 1, lines.length); i++) {
+  for (let i = 0; i < lineNum - 1; i++) {
     idx += lines[i].length + 1;
   }
 
+  // Blur + focus makes the textarea scroll the caret into view.
+  editor.blur();
+  editor.setSelectionRange(idx, idx);
   editor.focus();
 
-  editor.setSelectionRange(idx, idx);
-
   updateStatus();
-
-  gotoDialog.close();
 }
-
-document.getElementById("goto-ok-btn").addEventListener("click", confirmGoTo);
 
 document.getElementById("goto-close-btn").addEventListener("click", () => {
   gotoDialog.close();
@@ -1435,7 +1504,7 @@ document.getElementById("goto-form").addEventListener("submit", (e) => {
 });
 
 // =========================================================
-// FONT
+// FONT AND ZOOM
 // =========================================================
 
 const fontDialog = document.getElementById("font-dialog");
@@ -1455,16 +1524,13 @@ function openFontDialog() {
 function confirmFontDialog() {
   fontFamily = fontFamilySelect.value;
 
-  fontSize = parseInt(fontSizeInput.value, 10) || 14;
+  fontSize = Math.min(72, Math.max(8, parseInt(fontSizeInput.value, 10) || 14));
 
   applyFont();
+  saveSetting({ fontFamily, fontSize });
 
   fontDialog.close();
 }
-
-document
-  .getElementById("font-ok-btn")
-  .addEventListener("click", confirmFontDialog);
 
 document.getElementById("font-close-btn").addEventListener("click", () => {
   fontDialog.close();
@@ -1480,11 +1546,14 @@ function applyFont() {
   editor.style.fontFamily = fontFamily;
 
   editor.style.fontSize = `${(fontSize * zoomLevel) / 100}px`;
+
+  remeasureHighlight();
 }
 
 function applyZoom() {
   editor.style.fontSize = `${(fontSize * zoomLevel) / 100}px`;
 
+  saveSetting({ zoom: zoomLevel });
   updateStatus();
 }
 
@@ -1506,6 +1575,21 @@ function zoomReset() {
   applyZoom();
 }
 
+window.addEventListener(
+  "wheel",
+  (event) => {
+    if (!event.ctrlKey && !event.metaKey) return;
+
+    event.preventDefault();
+    if (event.deltaY < 0) {
+      zoomIn();
+    } else if (event.deltaY > 0) {
+      zoomOut();
+    }
+  },
+  { passive: false },
+);
+
 // =========================================================
 // WORD WRAP / STATUS BAR
 // =========================================================
@@ -1514,6 +1598,9 @@ function setWordWrap(value) {
   wordWrap = value;
 
   editor.classList.toggle("nowrap", !wordWrap);
+  saveSetting({ wordWrap });
+  syncAppMenuChecks();
+  remeasureHighlight();
 
   updateStatus();
 }
@@ -1522,34 +1609,76 @@ function setStatusBarVisible(value) {
   statusBarVisible = value;
 
   statusBar.classList.toggle("hidden", !statusBarVisible);
+  document.body.classList.toggle("status-bar-hidden", !statusBarVisible);
+  saveSetting({ statusBar: statusBarVisible });
+  syncAppMenuChecks();
+  remeasureHighlight();
+}
+
+function syncAppMenuChecks() {
+  const checkedActions = new Set([
+    ...(wordWrap ? ["word-wrap"] : []),
+    ...(statusBarVisible ? ["status-bar"] : []),
+    `theme-${themeMode}`,
+  ]);
+
+  document.querySelectorAll(".app-menu-popup [data-action]").forEach((item) => {
+    const check = item.querySelector(".menu-check");
+    if (check) {
+      check.textContent = checkedActions.has(item.dataset.action) ? "✓" : "";
+    }
+  });
 }
 
 // =========================================================
 // STATUS
 // =========================================================
 
+const ENCODING_LABELS = {
+  "utf-8": "UTF-8",
+  "utf-8-bom": "UTF-8 with BOM",
+  "utf-16le": "UTF-16 LE",
+  "utf-16be": "UTF-16 BE",
+  "windows-1252": "ANSI",
+};
+
+let countsDirty = true;
+let cachedWords = 0;
+
 function updateStatus() {
+  const value = editor.value;
   const position = editor.selectionStart || 0;
+  // lastIndexOf treats a negative start as 0, so position 0 is special-cased.
+  const lineStart = position === 0 ? 0 : value.lastIndexOf("\n", position - 1) + 1;
+  let line = 1;
 
-  const textBefore = editor.value.slice(0, position);
+  for (let i = value.indexOf("\n"); i !== -1 && i < position; i = value.indexOf("\n", i + 1)) {
+    line++;
+  }
 
-  const lines = textBefore.split("\n");
+  statusPosition.textContent = `Ln ${line}, Col ${position - lineStart + 1}`;
 
-  const line = lines.length;
+  if (countsDirty) {
+    cachedWords = (value.match(/\S+/g) || []).length;
+    countsDirty = false;
+  }
 
-  const column = lines[lines.length - 1].length + 1;
+  const charCount = value.length;
 
-  statusPosition.textContent = `Ln ${line}, Col ${column}`;
-
-  const charCount = editor.value.length;
-
-  statusCount.textContent = `${charCount} ${
+  statusWords.textContent = `${cachedWords.toLocaleString()} ${
+    cachedWords === 1 ? "word" : "words"
+  }`;
+  statusCount.textContent = `${charCount.toLocaleString()} ${
     charCount === 1 ? "character" : "characters"
   }`;
-
   statusWrap.textContent = wordWrap ? "Word Wrap" : "No Wrap";
-
   statusZoom.textContent = `${zoomLevel}%`;
+
+  const tab = getActiveTab();
+  const eol = tab ? tab.eol : defaultEol;
+  statusEol.textContent = eol === "lf" ? "LF" : "CRLF";
+  statusEol.title = eol === "lf" ? "Unix line endings (LF)" : "Windows line endings (CRLF)";
+  statusEncoding.textContent = ENCODING_LABELS[tab ? tab.encoding : "utf-8"] || "UTF-8";
 }
 
 editor.addEventListener("input", () => {
@@ -1558,214 +1687,261 @@ editor.addEventListener("input", () => {
   if (!tab) return;
 
   tab.content = editor.value;
-
-  tab.dirty = true;
+  countsDirty = true;
 
   scheduleDraftSave(tab);
-
   updateStatus();
-
-  if (findDialog.open && findInput.value) {
-    refreshFindMatches(true);
-  } else {
-    hideFindHighlight();
-  }
-
-  renderTabs();
+  updateDirtyState(tab);
+  onEditorContentChanged();
 });
 
 editor.addEventListener("click", updateStatus);
-
 editor.addEventListener("keyup", updateStatus);
+editor.addEventListener("select", updateStatus);
+
+// clientWidth/clientHeight exclude the scrollbars, so anything past them is
+// a scrollbar. Skipped while a button is held so dragging the thumb keeps
+// its cursor even if the pointer drifts off it.
+editor.addEventListener("pointermove", (event) => {
+  if (event.buttons) return;
+
+  const rect = editor.getBoundingClientRect();
+
+  editor.classList.toggle(
+    "over-scrollbar",
+    event.clientX - rect.left >= editor.clientLeft + editor.clientWidth ||
+      event.clientY - rect.top >= editor.clientTop + editor.clientHeight,
+  );
+});
+
+editor.addEventListener("pointerleave", () => {
+  editor.classList.remove("over-scrollbar");
+});
+
+// Clicking or typing in the editor takes over from the find highlight, and
+// becomes the new starting point for the next search.
+editor.addEventListener("pointerdown", () => {
+  if (!editor.classList.contains("over-scrollbar")) hideFindHighlight();
+});
+editor.addEventListener("pointerup", () => {
+  findAnchor = editor.selectionStart;
+});
 
 editor.addEventListener("keydown", (event) => {
+  if (!["Shift", "Control", "Alt", "Meta"].includes(event.key)) {
+    hideFindHighlight();
+  }
+
+  if (event.key === "Escape" && findMode) {
+    event.preventDefault();
+    closeFindBar();
+    return;
+  }
+
   if (event.key !== "Tab" || event.ctrlKey || event.metaKey || event.altKey) {
     return;
   }
 
   event.preventDefault();
 
-  const start = editor.selectionStart;
-  const end = editor.selectionEnd;
-  const indentation = "   ";
-
-  editor.setRangeText(indentation, start, end, "end");
-  updateStatus();
+  document.execCommand("insertText", false, "\t");
 });
 
 // =========================================================
 // RATIO
 // =========================================================
 
-function syncRatioControls(value = ratioSelection) {
-  const menu = ratioSelect
-    .closest(".custom-select")
-    .querySelector(".select-menu");
-
-  const label =
-    value && (value === "4:5" || value === "16:9") ? value : "Custom";
-
-  ratioSelect.querySelector(".select-value").textContent = label;
-
-  menu.querySelectorAll(".select-option").forEach((option) => {
-    option.classList.toggle(
-      "selected",
-      option.dataset.value === value ||
-        (!value && option.dataset.value === "custom"),
-    );
+function syncScreenMenu() {
+  document.querySelectorAll("#app-menu-bar [data-ratio]").forEach((option) => {
+    const check = option.querySelector(".menu-check");
+    if (check) check.textContent = option.dataset.ratio === ratioSelection ? "✓" : "";
   });
 }
 
 function setRatio(ratio) {
   ratioSelection = ratio;
 
-  suppressRatioClear = true;
-
-  syncRatioControls(ratio);
-
-  window.setTimeout(() => {
-    suppressRatioClear = false;
-  }, 150);
+  syncScreenMenu();
 
   window.api.setWindowRatio(ratio);
 }
 
-function clearRatioSelection() {
-  if (ratioSelection && !suppressRatioClear) {
-    ratioSelection = null;
-
-    syncRatioControls();
-  }
-}
-
-function setupCustomDropdown(trigger, menu, onSelect) {
-  if (!trigger || !menu) return;
-
-  trigger.addEventListener("click", (event) => {
-    event.stopPropagation();
-
-    const parent = trigger.closest(".custom-select");
-
-    const isOpen = parent.classList.contains("open");
-
-    closeCustomDropdowns();
-
-    parent.classList.toggle("open", !isOpen);
-
-    trigger.setAttribute("aria-expanded", String(!isOpen));
-  });
-
-  menu.querySelectorAll(".select-option").forEach((option) => {
-    option.addEventListener("click", (event) => {
-      event.stopPropagation();
-
-      const parent = trigger.closest(".custom-select");
-
-      parent.classList.remove("open");
-
-      trigger.setAttribute("aria-expanded", "false");
-
-      menu.querySelectorAll(".select-option").forEach((item) => {
-        item.classList.toggle("selected", item === option);
-      });
-
-      const valueEl = trigger.querySelector(".select-value");
-
-      if (valueEl) {
-        valueEl.textContent = option.textContent.trim();
-      }
-
-      onSelect(option.dataset.value);
-    });
-  });
-}
-
-function closeCustomDropdowns() {
-  document.querySelectorAll(".custom-select.open").forEach((element) => {
-    element.classList.remove("open");
-
-    const trigger = element.querySelector(".select-trigger");
-
-    if (trigger) {
-      trigger.setAttribute("aria-expanded", "false");
-    }
-  });
-}
-
-document.addEventListener("click", () => {
-  closeCustomDropdowns();
+window.api.onRatioChanged((ratio) => {
+  ratioSelection = ratio;
+  syncScreenMenu();
 });
-
-setupCustomDropdown(
-  ratioSelect,
-  ratioSelect.closest(".custom-select").querySelector(".select-menu"),
-  (value) => {
-    if (value === "custom") {
-      ratioSelection = null;
-
-      ratioSelect.querySelector(".select-value").textContent = "Custom";
-
-      return;
-    }
-
-    setRatio(value);
-  },
-);
 
 // =========================================================
 // FILE OPEN / SAVE
 // =========================================================
 
-async function doOpen() {
-  const result = await window.api.openFile();
+async function openFileResults(results) {
+  const errors = [];
 
-  if (!result) return;
+  for (const result of results || []) {
+    if (result.error) {
+      errors.push(`${result.filePath}\n${result.error}`);
+      continue;
+    }
 
-  flushCurrentEditorContent();
+    const existing = tabs.find(
+      (t) => t.filePath && samePath(t.filePath, result.filePath),
+    );
 
-  createTab({
-    title: result.name,
-    content: result.content,
-    filePath: result.filePath,
-  });
-}
+    if (existing) {
+      switchTab(existing.id);
+      continue;
+    }
 
-async function doSave() {
-  const tab = getActiveTab();
+    const fileFields = {
+      title: result.name,
+      content: result.content,
+      savedContent: result.content,
+      filePath: result.filePath,
+      encoding: result.encoding,
+      eol: result.eol,
+    };
 
-  if (!tab) return;
+    // Like Notepad, an untouched blank tab is reused instead of left behind.
+    const active = getActiveTab();
+    if (active && !active.filePath && !editor.value && isUntitled(active.title)) {
+      Object.assign(active, fileFields, { view: null });
+      persistIndex();
+      window.api.saveDraft(active.id, active.content);
+      renderTabs();
+      loadActiveIntoEditor();
+      onActiveTabChanged();
+    } else {
+      createTab(fileFields);
+    }
+  }
 
-  tab.content = editor.value;
-
-  if (tab.filePath) {
-    await window.api.saveFile(tab.filePath, tab.content);
-
-    window.api.saveDraft(tab.id, tab.content);
-  } else {
-    await doSaveAs();
+  if (errors.length) {
+    await showError(`Couldn't open:\n\n${errors.join("\n\n")}`);
   }
 }
 
-async function doSaveAs() {
-  const tab = getActiveTab();
+async function doOpen() {
+  openFileResults(await window.api.openFile());
+}
 
-  if (!tab) return;
+// Returns true once the tab's content is safely written to a file.
+async function saveTab(tab, forceSaveAs = false) {
+  if (tab.id === activeId) tab.content = editor.value;
 
-  tab.content = editor.value;
+  const content = tab.content;
+  const request = { content, encoding: tab.encoding, eol: tab.eol };
+  const saveAs = forceSaveAs || !tab.filePath;
 
-  const result = await window.api.saveFileAs(tab.title, tab.content);
+  const result = saveAs
+    ? await window.api.saveFileAs({
+        ...request,
+        defaultName: tab.title,
+        defaultPath: tab.filePath,
+      })
+    : await window.api.saveFile({ ...request, filePath: tab.filePath });
 
-  if (!result) return;
+  if (!result) return false;
+
+  if (result.error) {
+    await showError(`Couldn't save to ${result.filePath}\n\n${result.error}`);
+    return false;
+  }
 
   tab.filePath = result.filePath;
+  tab.encoding = result.encoding;
+  tab.savedContent = content;
+  if (saveAs) tab.title = result.name;
 
-  tab.title = result.name;
-
-  window.api.saveDraft(tab.id, tab.content);
-
+  window.api.saveDraft(tab.id, content);
   persistIndex();
-
   renderTabs();
+  updateStatus();
+  showToast(`Saved ${result.filePath.split(/[\\/]/).pop()}`);
+
+  return true;
+}
+
+function doSave() {
+  const tab = getActiveTab();
+  if (tab) saveTab(tab);
+}
+
+function doSaveAs() {
+  const tab = getActiveTab();
+  if (tab) saveTab(tab, true);
+}
+
+window.api.onOpenFiles((files) => openFileResults(files));
+
+// Dropping files anywhere on the window opens them as tabs.
+let dragDepth = 0;
+
+function hasFiles(event) {
+  return Array.from(event.dataTransfer?.types || []).includes("Files");
+}
+
+document.addEventListener(
+  "dragenter",
+  (event) => {
+    if (!hasFiles(event)) return;
+    event.preventDefault();
+    dragDepth++;
+    dropOverlay.classList.add("visible");
+  },
+  true,
+);
+
+document.addEventListener(
+  "dragover",
+  (event) => {
+    if (!hasFiles(event)) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+  },
+  true,
+);
+
+document.addEventListener(
+  "dragleave",
+  (event) => {
+    if (!hasFiles(event)) return;
+    dragDepth = Math.max(0, dragDepth - 1);
+    if (!dragDepth) dropOverlay.classList.remove("visible");
+  },
+  true,
+);
+
+document.addEventListener(
+  "drop",
+  async (event) => {
+    if (!hasFiles(event)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    dragDepth = 0;
+    dropOverlay.classList.remove("visible");
+
+    const paths = Array.from(event.dataTransfer.files)
+      .map((file) => window.api.getPathForFile(file))
+      .filter(Boolean);
+
+    if (paths.length) openFileResults(await window.api.openPaths(paths));
+  },
+  true,
+);
+
+// =========================================================
+// PRINT
+// =========================================================
+
+// The editor is a scrolling textarea, so printing the page would only show
+// the visible lines. A print-only copy of the full text is printed instead.
+function printActiveTab() {
+  printArea.textContent = editor.value;
+  printArea.style.fontFamily = fontFamily;
+  printArea.style.fontSize = `${fontSize}px`;
+
+  window.api.print();
 }
 
 // =========================================================
@@ -1777,40 +1953,14 @@ function insertTimeDate() {
 
   const text = now.toLocaleTimeString() + " " + now.toLocaleDateString();
 
-  const start = editor.selectionStart;
-
-  const end = editor.selectionEnd;
-
-  const value = editor.value;
-
-  editor.value = value.slice(0, start) + text + value.slice(end);
-
   editor.focus();
 
-  editor.setSelectionRange(start + text.length, start + text.length);
-
-  const tab = getActiveTab();
-
-  if (tab) {
-    tab.content = editor.value;
-
-    scheduleDraftSave(tab);
-  }
-
-  updateStatus();
+  document.execCommand("insertText", false, text);
 }
 
 // =========================================================
-// RESPONSIVE / THEME
+// THEME
 // =========================================================
-
-function updateResponsiveMode() {
-  const compact = window.innerWidth < window.innerHeight * 1.25;
-
-  document.body.classList.toggle("compact-mode", compact);
-}
-
-let themeMode = "system";
 
 themeMedia.addEventListener("change", () => {
   if (themeMode === "system") {
@@ -1827,28 +1977,104 @@ function setTheme(mode) {
 
   document.body.classList.toggle("dark", shouldUseDark);
 
-  darkMode = shouldUseDark;
-}
-
-function setDarkMode(value) {
-  setTheme(value ? "dark" : "light");
+  window.api.setTitleBarTheme(shouldUseDark);
+  saveSetting({ theme: themeMode });
+  syncAppMenuChecks();
 }
 
 // =========================================================
 // WINDOW RESIZE
 // =========================================================
 
-window.addEventListener("resize", () => {
-  updateResponsiveMode();
-
-  if (!suppressRatioClear) {
-    clearRatioSelection();
-  }
-});
+window.addEventListener("resize", remeasureHighlight);
 
 // =========================================================
 // MENU ACTIONS
 // =========================================================
+
+const appMenuBar = document.getElementById("app-menu-bar");
+
+// The in-app menu takes focus when clicked, so edit commands are sent back
+// to whichever text field was focused before (editor or a find box).
+let lastFocusedField = editor;
+
+document.addEventListener("focusin", (event) => {
+  if (event.target.matches("textarea, input[type='text']")) {
+    lastFocusedField = event.target;
+  }
+});
+
+function closeAppMenus() {
+  appMenuBar.querySelectorAll(".app-menu").forEach((menu) => {
+    menu.classList.remove("open");
+    menu.querySelector(".app-menu-trigger").setAttribute("aria-expanded", "false");
+  });
+}
+
+appMenuBar.querySelectorAll(".app-menu-trigger").forEach((trigger) => {
+  trigger.addEventListener("click", (event) => {
+    event.stopPropagation();
+    const currentMenu = trigger.closest(".app-menu");
+    const shouldOpen = !currentMenu.classList.contains("open");
+
+    closeAppMenus();
+
+    currentMenu.classList.toggle("open", shouldOpen);
+    trigger.setAttribute("aria-expanded", String(shouldOpen));
+  });
+
+  // Once one menu is open, hovering the others switches to them.
+  trigger.addEventListener("pointerenter", () => {
+    const currentMenu = trigger.closest(".app-menu");
+    const anotherOpen = appMenuBar.querySelector(".app-menu.open");
+
+    if (anotherOpen && anotherOpen !== currentMenu) {
+      closeAppMenus();
+      currentMenu.classList.add("open");
+      trigger.setAttribute("aria-expanded", "true");
+    }
+  });
+});
+
+appMenuBar.addEventListener("click", (event) => {
+  const item = event.target.closest("button[data-action], button[data-ratio]");
+  if (!item) return;
+
+  if (item.hasAttribute("data-ratio")) {
+    setRatio(item.dataset.ratio);
+  } else {
+    const { action } = item.dataset;
+    if (
+      ["undo", "redo", "cut", "copy", "paste", "delete", "select-all"].includes(
+        action,
+      )
+    ) {
+      const field =
+        lastFocusedField && lastFocusedField.offsetParent !== null
+          ? lastFocusedField
+          : editor;
+      field.focus();
+      window.api.editAction(action);
+    } else {
+      let payload;
+      if (action === "word-wrap") payload = !wordWrap;
+      if (action === "status-bar") payload = !statusBarVisible;
+      window.api.triggerMenuAction(action, payload);
+    }
+  }
+
+  closeAppMenus();
+});
+
+document.addEventListener("click", (event) => {
+  if (appMenuBar.contains(event.target)) return;
+  closeAppMenus();
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") return;
+  closeAppMenus();
+});
 
 window.api.onMenuAction(({ action, payload }) => {
   switch (action) {
@@ -1873,7 +2099,7 @@ window.api.onMenuAction(({ action, payload }) => {
       break;
 
     case "print":
-      window.api.print();
+      printActiveTab();
       break;
 
     case "time-date":
@@ -1881,15 +2107,19 @@ window.api.onMenuAction(({ action, payload }) => {
       break;
 
     case "find":
-      openFind();
+      openFindBar("find");
       break;
 
     case "find-next":
       findNext();
       break;
 
+    case "find-previous":
+      findPrevious();
+      break;
+
     case "replace":
-      openReplace();
+      openFindBar("replace");
       break;
 
     case "go-to":
@@ -1920,10 +2150,6 @@ window.api.onMenuAction(({ action, payload }) => {
       setStatusBarVisible(payload);
       break;
 
-    case "dark-mode":
-      setDarkMode(payload);
-      break;
-
     case "theme-light":
       setTheme("light");
       break;
@@ -1934,14 +2160,6 @@ window.api.onMenuAction(({ action, payload }) => {
 
     case "theme-system":
       setTheme("system");
-      break;
-
-    case "ratio-4-5":
-      setRatio("4:5");
-      break;
-
-    case "ratio-16-9":
-      setRatio("16:9");
       break;
 
     default:
@@ -1957,7 +2175,7 @@ editor.addEventListener("keydown", (event) => {
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "f") {
     event.preventDefault();
 
-    openFind();
+    openFindBar("find");
 
     return;
   }
@@ -1993,18 +2211,30 @@ editor.addEventListener("keydown", (event) => {
 // INITIALIZATION
 // =========================================================
 
-function initTheme() {
-  setTheme("system");
+function applySettings(settings) {
+  fontFamily = settings.fontFamily || fontFamily;
+  fontSize = settings.fontSize || fontSize;
+  zoomLevel = settings.zoom || zoomLevel;
+  ratioSelection = settings.ratio || ratioSelection;
 
+  setTheme(settings.theme);
+  setWordWrap(settings.wordWrap !== false);
+  setStatusBarVisible(settings.statusBar !== false);
   applyFont();
+  syncScreenMenu();
 
-  setRatio("4:5");
-
-  updateResponsiveMode();
+  // Applying saved values shouldn't write them straight back.
+  clearTimeout(settingsTimer);
+  pendingSettings = {};
 }
 
 async function init() {
-  const saved = await window.api.loadAllNotes();
+  const [settings, saved] = await Promise.all([
+    window.api.getSettings(),
+    window.api.loadAllNotes(),
+  ]);
+
+  applySettings(settings || {});
 
   if (saved && saved.length > 0) {
     tabs = saved
@@ -2012,24 +2242,40 @@ async function init() {
       .map((t) => ({
         id: t.id,
         title: t.title || "Untitled",
+        color: Number.isInteger(t.color) && TAB_COLORS[t.color] ? t.color : null,
         content: t.content || "",
+        savedContent: t.savedContent ?? null,
         filePath: t.filePath || null,
+        encoding: t.encoding || "utf-8",
+        eol: t.eol || defaultEol,
+        persistedDirty: t.dirty,
       }));
+
+    // Tabs saved before badges existed get a colour now, saved right away.
+    const uncolored = tabs.filter((tab) => tab.color === null);
+    uncolored.forEach((tab) => {
+      tab.color = pickTabColor();
+    });
 
     const savedActiveTab = saved.find((tab) => tab.active);
 
     activeId = savedActiveTab?.id || tabs[tabs.length - 1].id;
+
+    if (uncolored.length) persistIndex();
+    renderTabs();
+    loadActiveIntoEditor();
   } else {
     createTab();
   }
 
-  renderTabs();
+  await openFileResults(await window.api.takePendingFiles());
 
-  loadActiveIntoEditor();
+  window.api.appReady();
 
-  updateStatus();
-
-  initTheme();
+  // Transitions are switched on only after the window has painted, so the
+  // saved theme and layout appear instantly instead of animating in. (A
+  // timer rather than requestAnimationFrame, which is paused while hidden.)
+  setTimeout(() => document.body.classList.add("ready"), 300);
 }
 
 init();

@@ -2,12 +2,77 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:"
+    />
     <title>StackPad</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <header id="window-titlebar"><span>StackPad</span></header>
+    <nav id="app-menu-bar" aria-label="Application menu">
+      <div class="app-menu">
+        <button class="app-menu-trigger" type="button" aria-expanded="false">File</button>
+        <div class="app-menu-popup">
+          <button data-action="new-tab">New Tab <span>Ctrl+N</span></button>
+          <button data-action="open">Open... <span>Ctrl+O</span></button>
+          <hr />
+          <button data-action="save">Save <span>Ctrl+S</span></button>
+          <button data-action="save-as">Save As... <span>Ctrl+Shift+S</span></button>
+          <hr />
+          <button data-action="print">Print... <span>Ctrl+P</span></button>
+          <button data-action="close-tab">Close Tab <span>Ctrl+W</span></button>
+          <button data-action="exit">Exit <span>Alt+F4</span></button>
+        </div>
+      </div>
+      <div class="app-menu">
+        <button class="app-menu-trigger" type="button" aria-expanded="false">Edit</button>
+        <div class="app-menu-popup">
+          <button data-action="undo">Undo <span>Ctrl+Z</span></button>
+          <button data-action="redo">Redo <span>Ctrl+Y</span></button>
+          <hr />
+          <button data-action="cut">Cut <span>Ctrl+X</span></button>
+          <button data-action="copy">Copy <span>Ctrl+C</span></button>
+          <button data-action="paste">Paste <span>Ctrl+V</span></button>
+          <button data-action="select-all">Select All <span>Ctrl+A</span></button>
+          <hr />
+          <button data-action="find">Find... <span>Ctrl+F</span></button>
+          <button data-action="find-next">Find Next <span>F3</span></button>
+          <button data-action="find-previous">Find Previous <span>Shift+F3</span></button>
+          <button data-action="replace">Replace... <span>Ctrl+H</span></button>
+          <button data-action="go-to">Go To... <span>Ctrl+G</span></button>
+          <button data-action="time-date">Time/Date <span>F5</span></button>
+        </div>
+      </div>
+      <div class="app-menu">
+        <button class="app-menu-trigger" type="button" aria-expanded="false">View</button>
+        <div class="app-menu-popup">
+          <button data-action="word-wrap">Word Wrap <span class="menu-check">✓</span></button>
+          <button data-action="font">Font...</button>
+          <hr />
+          <button data-action="zoom-in">Zoom In <span>Ctrl++</span></button>
+          <button data-action="zoom-out">Zoom Out <span>Ctrl+-</span></button>
+          <button data-action="zoom-reset">Restore Default Zoom <span>Ctrl+0</span></button>
+          <hr />
+          <button data-action="status-bar">Status Bar <span class="menu-check">✓</span></button>
+          <hr />
+          <button data-action="theme-light">Light <span class="menu-check"></span></button>
+          <button data-action="theme-dark">Dark <span class="menu-check"></span></button>
+          <button data-action="theme-system">Use System Settings <span class="menu-check">✓</span></button>
+        </div>
+      </div>
+      <div class="app-menu">
+        <button class="app-menu-trigger" type="button" aria-expanded="false">Screen</button>
+        <div class="app-menu-popup">
+          <button data-ratio="4:5">4:5 <span class="menu-check">✓</span></button>
+          <button data-ratio="16:9">16:9 <span class="menu-check"></span></button>
+          <button data-ratio="freeform">Freeform <span class="menu-check"></span></button>
+        </div>
+      </div>
+    </nav>
     <div id="app">
-      <nav id="sidebar" class="collapsed">
+      <nav id="sidebar">
         <div id="tab-list"></div>
         <button
           id="new-tab-btn-bottom"
@@ -31,49 +96,68 @@
 
       <div id="content-shell">
         <header class="topbar">
-          <div class="ratio-group" aria-label="Window ratio selector">
-            <div class="custom-select">
-              <button
-                id="ratio-select"
-                class="select-trigger"
-                type="button"
-                aria-haspopup="listbox"
-                aria-expanded="false"
-              >
-                <span class="select-value">4:5</span>
-              </button>
-              <div
-                class="select-menu"
-                role="listbox"
-                aria-label="Select screen ratio"
-              >
-                <button
-                  type="button"
-                  class="select-option selected"
-                  data-value="4:5"
-                  role="option"
-                >
-                  4:5
-                </button>
-                <button
-                  type="button"
-                  class="select-option"
-                  data-value="16:9"
-                  role="option"
-                >
-                  16:9
-                </button>
-                <button
-                  type="button"
-                  class="select-option"
-                  data-value="custom"
-                  role="option"
-                >
-                  Custom
-                </button>
-              </div>
-            </div>
+          <div id="document-title" class="document-title">
+            <span id="document-title-text" title="Double-click to rename this tab"></span>
+            <span id="document-title-dirty" class="dirty-dot" title="Unsaved changes" hidden></span>
+            <input id="document-title-input" type="text" aria-label="Tab title" hidden />
+            <span id="document-title-actions" class="document-title-actions" hidden>
+              <button id="document-title-confirm" type="button" title="Confirm title" aria-label="Confirm title">✓</button>
+              <button id="document-title-cancel" type="button" title="Cancel title edit" aria-label="Cancel title edit">×</button>
+            </span>
           </div>
+          <section id="find-controls" class="find-controls" hidden>
+            <form id="find-form" class="find-controls-row">
+              <span class="find-input-wrap">
+                <input
+                  id="find-input"
+                  type="text"
+                  placeholder="Find"
+                  autocomplete="off"
+                  spellcheck="false"
+                  aria-label="Find"
+                />
+                <span class="find-options">
+                  <button class="find-option-btn" type="button" data-find-option="matchCase" title="Match case" aria-label="Match case" aria-pressed="false">Aa</button>
+                  <button class="find-option-btn" type="button" data-find-option="wholeWord" title="Match whole word" aria-label="Match whole word" aria-pressed="false"><span class="whole-word-glyph">ab</span></button>
+                </span>
+              </span>
+              <span id="find-status" class="find-count" aria-live="polite"></span>
+              <button id="find-prev-btn" class="find-icon-btn" type="button" title="Previous match" aria-label="Previous match">↑</button>
+              <button id="find-next-btn" class="find-icon-btn" type="button" title="Next match" aria-label="Next match">↓</button>
+              <button id="show-replace-btn" class="find-icon-btn" type="button" title="Show replace" aria-label="Show replace">↔</button>
+              <button id="find-close-btn" class="find-icon-btn" type="button" title="Close find" aria-label="Close find">×</button>
+            </form>
+            <form id="replace-form" class="find-controls-row replace-controls-row" hidden>
+              <span class="find-input-wrap">
+                <input
+                  id="replace-find-input"
+                  type="text"
+                  placeholder="Find"
+                  autocomplete="off"
+                  spellcheck="false"
+                  aria-label="Find"
+                />
+                <span class="find-options">
+                  <button class="find-option-btn" type="button" data-find-option="matchCase" title="Match case" aria-label="Match case" aria-pressed="false">Aa</button>
+                  <button class="find-option-btn" type="button" data-find-option="wholeWord" title="Match whole word" aria-label="Match whole word" aria-pressed="false"><span class="whole-word-glyph">ab</span></button>
+                </span>
+              </span>
+              <input
+                id="replace-with-input"
+                type="text"
+                placeholder="Replace"
+                autocomplete="off"
+                spellcheck="false"
+                aria-label="Replace"
+              />
+              <span id="replace-status" class="find-count" aria-live="polite"></span>
+              <button id="replace-prev-btn" class="find-icon-btn" type="button" title="Previous match" aria-label="Previous match">↑</button>
+              <button id="replace-next-btn" class="find-icon-btn" type="button" title="Next match" aria-label="Next match">↓</button>
+              <button id="replace-one-btn" class="find-icon-btn" type="button" title="Replace match" aria-label="Replace match">↔</button>
+              <button id="replace-all-btn" class="find-icon-btn" type="button" title="Replace all matches" aria-label="Replace all matches">⇄</button>
+              <button id="replace-close-btn" class="find-icon-btn" type="button" title="Close replace" aria-label="Close replace">×</button>
+            </form>
+          </section>
         </header>
 
         <main id="editor-area">
@@ -81,7 +165,6 @@
             id="editor"
             spellcheck="true"
             wrap="soft"
-            autofocus
           ></textarea>
         </main>
       </div>
@@ -89,114 +172,13 @@
 
     <footer id="status-bar">
       <span id="status-position">Ln 1, Col 1</span>
+      <span id="status-words">0 words</span>
       <span id="status-count">0 characters</span>
       <span id="status-wrap">Word Wrap</span>
-      <span id="status-zoom">100%</span>
+      <span id="status-zoom" class="status-right">100%</span>
+      <span id="status-eol">CRLF</span>
+      <span id="status-encoding">UTF-8</span>
     </footer>
-
-    <dialog id="find-dialog">
-      <form id="find-form">
-        <div class="find-header">
-          <span class="find-title">Find</span>
-
-          <button
-            id="find-close-btn"
-            class="find-close-btn"
-            type="button"
-            aria-label="Close Find"
-            title="Close"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              width="16"
-              height="16"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-            >
-              <line x1="6" y1="6" x2="18" y2="18" />
-              <line x1="18" y1="6" x2="6" y2="18" />
-            </svg>
-          </button>
-        </div>
-
-        <div class="find-input-row">
-          <input
-            id="find-input"
-            type="text"
-            placeholder="Find"
-            autocomplete="off"
-            spellcheck="false"
-          />
-        </div>
-
-        <div class="find-footer">
-          <span id="find-status" class="dialog-status"></span>
-
-          <button id="find-prev-btn" type="button">Previous</button>
-
-          <button id="find-next-btn" type="button">Next</button>
-        </div>
-      </form>
-    </dialog>
-
-    <dialog id="replace-dialog">
-      <form id="replace-form">
-        <div class="find-header">
-          <span class="find-title">Replace</span>
-
-          <button
-            id="replace-close-btn"
-            class="find-close-btn"
-            type="button"
-            aria-label="Close Replace"
-            title="Close"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              width="16"
-              height="16"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-            >
-              <line x1="6" y1="6" x2="18" y2="18" />
-              <line x1="18" y1="6" x2="6" y2="18" />
-            </svg>
-          </button>
-        </div>
-
-        <div class="find-input-row">
-          <input
-            id="replace-find-input"
-            type="text"
-            placeholder="Find"
-            autocomplete="off"
-            spellcheck="false"
-          />
-        </div>
-
-        <div class="find-input-row">
-          <input
-            id="replace-with-input"
-            type="text"
-            placeholder="Replace with"
-            autocomplete="off"
-            spellcheck="false"
-          />
-        </div>
-
-        <div class="find-footer">
-          <span id="replace-status" class="dialog-status"></span>
-
-          <button id="replace-next-btn" type="button">Next</button>
-          <button id="replace-one-btn" type="button">Replace</button>
-          <button id="replace-all-btn" type="button">Replace All</button>
-        </div>
-      </form>
-    </dialog>
 
     <dialog id="goto-dialog">
       <form method="dialog" id="goto-form">
@@ -204,7 +186,7 @@
           >Line number: <input id="goto-input" type="number" min="1"
         /></label>
         <div class="dialog-actions">
-          <button id="goto-ok-btn" type="button">OK</button>
+          <button id="goto-ok-btn" type="submit" class="primary-btn">OK</button>
           <button id="goto-close-btn" type="button">Cancel</button>
         </div>
       </form>
@@ -230,7 +212,7 @@
           <input id="font-size-input" type="number" min="8" max="72" value="14"
         /></label>
         <div class="dialog-actions">
-          <button id="font-ok-btn" type="button">OK</button>
+          <button id="font-ok-btn" type="submit" class="primary-btn">OK</button>
           <button id="font-close-btn" type="button">Cancel</button>
         </div>
       </form>
@@ -240,7 +222,7 @@
       <form method="dialog" id="rename-form">
         <label>Tab name: <input id="rename-input" type="text" /></label>
         <div class="dialog-actions">
-          <button id="rename-ok-btn" type="button">OK</button>
+          <button id="rename-ok-btn" type="submit" class="primary-btn">OK</button>
           <button id="rename-close-btn" type="button">Cancel</button>
         </div>
       </form>
@@ -249,14 +231,13 @@
     <dialog id="confirm-dialog">
       <form method="dialog" id="confirm-form">
         <p id="confirm-message" class="confirm-message"></p>
-        <div class="dialog-actions">
-          <button id="confirm-no-btn" type="button">Cancel</button>
-          <button id="confirm-yes-btn" type="button" class="danger-btn">
-            Exit
-          </button>
-        </div>
+        <div id="confirm-actions" class="dialog-actions"></div>
       </form>
     </dialog>
+
+    <div id="drop-overlay" aria-hidden="true"><span>Drop files to open</span></div>
+    <div id="toast" role="status" aria-live="polite"></div>
+    <div id="print-area" aria-hidden="true"></div>
 
     <script src="renderer.js"></script>
   </body>

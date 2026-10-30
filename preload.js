@@ -1,20 +1,37 @@
-const { contextBridge, ipcRenderer } = require("electron");
+const { contextBridge, ipcRenderer, webUtils } = require("electron");
 
 contextBridge.exposeInMainWorld("api", {
+  platform: process.platform,
+  triggerMenuAction: (action, payload) =>
+    ipcRenderer.send("menu:action", { action, payload }),
+  editAction: (action) => ipcRenderer.send("edit:action", action),
+  setTitleBarTheme: (dark) => ipcRenderer.send("window:titlebar-theme", dark),
+  appReady: () => ipcRenderer.send("app:ready"),
+
+  getSettings: () => ipcRenderer.invoke("settings:get"),
+  updateSettings: (partial) => ipcRenderer.send("settings:update", partial),
+
   loadAllNotes: () => ipcRenderer.invoke("notes:load-all"),
   saveIndex: (data) => ipcRenderer.invoke("notes:save-index", data),
   saveDraft: (id, content) =>
     ipcRenderer.invoke("notes:save-draft", { id, content }),
+  flushSync: (data) => ipcRenderer.sendSync("notes:flush-sync", data),
   deleteNote: (id) => ipcRenderer.invoke("notes:delete-note", id),
 
   openFile: () => ipcRenderer.invoke("dialog:open-file"),
-  saveFileAs: (defaultName, content) =>
-    ipcRenderer.invoke("dialog:save-file-as", { defaultName, content }),
-  saveFile: (filePath, content) =>
-    ipcRenderer.invoke("file:save", { filePath, content }),
+  openPaths: (paths) => ipcRenderer.invoke("files:open-paths", paths),
+  takePendingFiles: () => ipcRenderer.invoke("files:take-pending"),
+  getPathForFile: (file) =>
+    webUtils ? webUtils.getPathForFile(file) : file.path,
+  saveFileAs: (data) => ipcRenderer.invoke("dialog:save-file-as", data),
+  saveFile: (data) => ipcRenderer.invoke("file:save", data),
   setWindowRatio: (ratio) => ipcRenderer.invoke("window:set-ratio", ratio),
   print: () => ipcRenderer.invoke("app:print"),
 
   onMenuAction: (callback) =>
     ipcRenderer.on("menu-action", (event, data) => callback(data)),
+  onOpenFiles: (callback) =>
+    ipcRenderer.on("open-files", (event, files) => callback(files)),
+  onRatioChanged: (callback) =>
+    ipcRenderer.on("ratio-changed", (event, ratio) => callback(ratio)),
 });

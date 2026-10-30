@@ -1,13 +1,13 @@
 {
   "name": "stackpad",
-  "version": "1.2.0",
-  "description": "StackPad is a lightweight desktop note app with heading presets and a clean dark/light theme.",
+  "version": "2.0.0",
+  "description": "StackPad is a lightweight desktop notepad with vertical tabs, window size presets and a clean light/dark theme.",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
     "dist": "electron-builder"
   },
-  "author": "",
+  "author": "Arafat Anam Chowdhury",
   "license": "MIT",
   "devDependencies": {
     "electron": "^31.0.0",
@@ -16,16 +16,43 @@
   "build": {
     "appId": "com.stackpad.app",
     "productName": "StackPad",
+    "copyright": "Copyright (c) 2026 Arafat Anam Chowdhury",
     "icon": "build/icon.ico",
     "files": [
       "main.js",
       "preload.js",
       "src/**/*",
-      "build/**/*"
+      "build/icon.*"
+    ],
+    "fileAssociations": [
+      {
+        "ext": "txt",
+        "name": "Text Document",
+        "description": "Text Document",
+        "role": "Editor"
+      }
     ],
     "win": {
       "target": "nsis",
-      "icon": "build/icon.ico"
+      "icon": "build/icon.ico",
+      "artifactName": "StackPad v${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true,
+      "license": "LICENSE",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerSidebar": "build/installerSidebar.bmp",
+      "uninstallerSidebar": "build/installerSidebar.bmp",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "StackPad",
+      "uninstallDisplayName": "StackPad",
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false
     },
     "mac": {
       "target": "dmg",
