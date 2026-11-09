@@ -1,4 +1,5 @@
-let tabs = []; // { id, title, color, content, savedContent, filePath, encoding, eol, view, persistedDirty }
+let tabs = []; // { id, title, color, groupId, content, savedContent, filePath, encoding, eol, view, persistedDirty }
+let groups = []; // { id, name, collapsed }
 let activeId = null;
 let wordWrap = true;
 let statusBarVisible = true;
@@ -20,8 +21,10 @@ document.body.classList.add(`platform-${window.api.platform}`);
 
 const editor = document.getElementById("editor");
 const editorArea = document.getElementById("editor-area");
+const sidebar = document.getElementById("sidebar");
 const tabListEl = document.getElementById("tab-list");
 const newTabBtn = document.getElementById("new-tab-btn-bottom");
+const newGroupBtn = document.getElementById("new-group-btn");
 const statusPosition = document.getElementById("status-position");
 const statusWords = document.getElementById("status-words");
 const statusCount = document.getElementById("status-count");
@@ -46,6 +49,8 @@ let documentTitleTargetId = null;
 newTabBtn.addEventListener("click", () => {
   createTab();
 });
+
+newGroupBtn.addEventListener("click", promptNewGroup);
 
 function uid() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -97,6 +102,15 @@ const TAB_COLORS = [
 const PAGE_ICON =
   '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/></svg>';
 
+const RENAME_ICON =
+  '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
+
+const CLOSE_ICON =
+  '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>';
+
+const CHEVRON_ICON =
+  '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
+
 function pickTabColor() {
   const counts = TAB_COLORS.map(
     (_, i) => tabs.filter((t) => t.color === i).length,
@@ -130,6 +144,157 @@ function getInitials(title) {
 }
 
 // =========================================================
+// TAB GROUPS
+// =========================================================
+//
+// A group is a named section of the rail. Each tab stores which group it is
+// in (or null), and the tabs array is kept in display order: ungrouped tabs
+// first, then each group's tabs, so Ctrl+Tab follows what the rail shows.
+
+function saveGroups() {
+  saveSetting({ groups });
+}
+
+function sortTabsByGroup() {
+  const rank = (tab) => groups.findIndex((g) => g.id === tab.groupId);
+
+  tabs.sort((a, b) => rank(a) - rank(b));
+}
+
+function promptNewGroup() {
+  openNameDialog("Group name:", "", createGroup);
+}
+
+function createGroup(name) {
+  if (!name.trim()) return;
+
+  groups.push({ id: uid(), name: name.trim(), collapsed: false });
+
+  saveGroups();
+  renderTabs({ revealActive: false });
+  tabListEl.lastElementChild.scrollIntoView({ block: "nearest" });
+}
+
+function renameGroup(group, name) {
+  if (!name.trim()) return;
+
+  group.name = name.trim();
+
+  saveGroups();
+  renderTabs({ revealActive: false });
+}
+
+function toggleGroup(group) {
+  group.collapsed = !group.collapsed;
+
+  saveGroups();
+  renderTabs({ revealActive: false });
+}
+
+// Deleting a group never closes its tabs; they just become ungrouped.
+function deleteGroup(group) {
+  tabs.forEach((tab) => {
+    if (tab.groupId === group.id) tab.groupId = null;
+  });
+  groups = groups.filter((g) => g !== group);
+
+  sortTabsByGroup();
+  saveGroups();
+  persistIndex();
+  renderTabs();
+}
+
+function moveGroup(group, toIndex) {
+  groups = groups.filter((g) => g !== group);
+  groups.splice(toIndex, 0, group);
+
+  sortTabsByGroup();
+  saveGroups();
+  persistIndex();
+  renderTabs({ revealActive: false });
+}
+
+// Unfolds the tab's group if needed. Returns true when the rail must redraw.
+function revealTabGroup(tab) {
+  const group = groups.find((g) => g.id === tab.groupId);
+
+  if (!group || !group.collapsed) return false;
+
+  group.collapsed = false;
+  saveGroups();
+
+  return true;
+}
+
+// Marks the header of the active tab's group, so a folded group still shows
+// that the open tab lives inside it.
+function updateGroupHighlight() {
+  const groupId = getActiveTab()?.groupId;
+
+  tabListEl.querySelectorAll(".group-header").forEach((header) => {
+    header.classList.toggle("has-active", header.dataset.groupId === groupId);
+  });
+}
+
+function createGroupHeader(group, tabCount) {
+  const header = document.createElement("div");
+
+  header.className = "group-header";
+  header.classList.toggle("collapsed", group.collapsed);
+  header.dataset.groupId = group.id;
+  header.title = group.name;
+
+  const chevron = document.createElement("span");
+  chevron.className = "group-chevron";
+  chevron.innerHTML = CHEVRON_ICON;
+
+  const name = document.createElement("span");
+  name.className = "group-name";
+  name.textContent = group.name;
+
+  const count = document.createElement("span");
+  count.className = "group-count";
+  count.textContent = tabCount;
+
+  const actions = document.createElement("span");
+  actions.className = "tab-actions";
+
+  const renameBtn = document.createElement("button");
+  renameBtn.className = "tab-action-btn";
+  renameBtn.title = "Rename group";
+  renameBtn.innerHTML = RENAME_ICON;
+  renameBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    openNameDialog("Group name:", group.name, (value) => renameGroup(group, value));
+  });
+
+  const deleteBtn = document.createElement("button");
+  deleteBtn.className = "tab-action-btn";
+  deleteBtn.title = "Delete group (keeps its tabs)";
+  deleteBtn.innerHTML = CLOSE_ICON;
+  deleteBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    deleteGroup(group);
+  });
+
+  actions.append(renameBtn, deleteBtn);
+  header.append(chevron, name, count, actions);
+  header.addEventListener("click", () => toggleGroup(group));
+  header.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0 || e.target.closest("button")) return;
+
+    pendingDragState = {
+      group,
+      item: header,
+      startX: e.clientX,
+      startY: e.clientY,
+    };
+  });
+
+  return header;
+}
+
+// =========================================================
 // TABS AND PERSISTENCE
 // =========================================================
 
@@ -146,6 +311,7 @@ function buildIndex() {
     id: t.id,
     title: t.title,
     color: t.color,
+    group: t.groupId,
     filePath: t.filePath || null,
     encoding: t.encoding,
     eol: t.eol,
@@ -216,6 +382,7 @@ function createTab(opts = {}) {
     id: uid(),
     title: opts.title || "Untitled",
     color: pickTabColor(),
+    groupId: getActiveTab()?.groupId ?? null,
     content: opts.content || "",
     savedContent: opts.savedContent ?? null,
     filePath: opts.filePath || null,
@@ -224,6 +391,8 @@ function createTab(opts = {}) {
   };
 
   tabs.push(tab);
+  sortTabsByGroup();
+  revealTabGroup(tab);
   activeId = tab.id;
   enteringTabId = tab.id;
 
@@ -253,12 +422,17 @@ function switchTab(id) {
 
   persistIndex();
 
-  // Only the highlight moves, so update classes instead of rebuilding the
-  // list (which would replay every tab's entrance animation).
-  tabListEl.querySelectorAll(".tab-item").forEach((item) => {
-    item.classList.toggle("active", item.dataset.id === id);
-    if (item.dataset.id === id) item.scrollIntoView({ block: "nearest" });
-  });
+  if (revealTabGroup(getActiveTab())) {
+    renderTabs();
+  } else {
+    // Only the highlight moves, so update classes instead of rebuilding the
+    // list (which would replay every tab's entrance animation).
+    tabListEl.querySelectorAll(".tab-item").forEach((item) => {
+      item.classList.toggle("active", item.dataset.id === id);
+      if (item.dataset.id === id) item.scrollIntoView({ block: "nearest" });
+    });
+    updateGroupHighlight();
+  }
   updateDocumentTitle();
   loadActiveIntoEditor();
 
@@ -449,7 +623,13 @@ async function closeTab(id) {
     }
 
     if (activeId === id) {
-      activeId = tabs[Math.max(0, idx - 1)].id;
+      // Stay in the same group when a neighbour allows it.
+      const nextActive =
+        [tabs[idx - 1], tabs[idx]].find((t) => t && t.groupId === tab.groupId) ||
+        tabs[Math.max(0, idx - 1)];
+
+      activeId = nextActive.id;
+      revealTabGroup(nextActive);
 
       loadActiveIntoEditor();
       onActiveTabChanged();
@@ -591,25 +771,62 @@ function removePlaceholder() {
   }
 }
 
-function getPlaceholderInsertIndex() {
-  if (!dropPlaceholder || !dropPlaceholder.parentElement) {
-    return -1;
+// Where the placeholder sits decides the drop: under a group header or a
+// grouped tab joins that group; above every header means ungrouped.
+function getDropTarget() {
+  if (!dropPlaceholder || !dropPlaceholder.parentElement) return null;
+
+  let prev = dropPlaceholder.previousElementSibling;
+
+  while (prev && prev.matches(".dragging, .group-empty")) {
+    prev = prev.previousElementSibling;
   }
 
+  if (!prev) return { groupId: null, afterTabId: null };
+
+  if (prev.classList.contains("group-header")) {
+    return { groupId: prev.dataset.groupId, afterTabId: null };
+  }
+
+  const after = tabs.find((t) => t.id === prev.dataset.id);
+
+  return { groupId: after.groupId, afterTabId: after.id };
+}
+
+// How many of the other groups sit above the placeholder.
+function getGroupDropIndex() {
   const children = Array.from(tabListEl.children);
 
-  const phIdx = children.indexOf(dropPlaceholder);
-
-  if (phIdx === -1) return -1;
-
   return children
-    .slice(0, phIdx)
-    .filter((el) => el.classList.contains("tab-item")).length;
+    .slice(0, children.indexOf(dropPlaceholder))
+    .filter((el) => el.matches(".group-header:not(.dragging)")).length;
+}
+
+// A dragged group can only land between groups, never among ungrouped tabs
+// or inside another group, so only the other headers are drop positions.
+function updateGroupPlaceholder(clientY) {
+  const headers = tabListEl.querySelectorAll(".group-header:not(.dragging)");
+
+  for (const header of headers) {
+    const rect = header.getBoundingClientRect();
+
+    if (clientY < rect.top + rect.height / 2) {
+      placePlaceholder(header, true);
+      return;
+    }
+  }
+
+  placePlaceholder(null, false);
 }
 
 function updatePlaceholder(clientY) {
-  const items = Array.from(tabListEl.querySelectorAll(".tab-item")).filter(
-    (el) => !el.classList.contains("dragging"),
+  if (customDragState && customDragState.group) {
+    updateGroupPlaceholder(clientY);
+    return;
+  }
+
+  const items = Array.from(
+    tabListEl.querySelectorAll(".tab-item:not(.dragging), .group-header"),
   );
 
   if (!items.length) {
@@ -636,12 +853,58 @@ function updatePlaceholder(clientY) {
 let customDragState = null;
 let pendingDragState = null;
 
+const DRAG_SCROLL_ZONE = 36; // px from the list's top or bottom edge
+const DRAG_SCROLL_MAX_SPEED = 12; // px per frame, reached at the very edge
+
+function clampToTabList(clientY) {
+  const { top, bottom } = tabListEl.getBoundingClientRect();
+
+  return Math.max(top, Math.min(clientY, bottom));
+}
+
+// Scrolls the rail while a dragged item is held near its top or bottom edge,
+// faster the closer it gets. Stops by itself when the drag ends.
+function autoScrollDuringDrag() {
+  if (!customDragState) return;
+
+  const { top, bottom } = tabListEl.getBoundingClientRect();
+  const y = clampToTabList(customDragState.lastY);
+  const depth =
+    y - top < DRAG_SCROLL_ZONE
+      ? y - top - DRAG_SCROLL_ZONE
+      : DRAG_SCROLL_ZONE - (bottom - y) > 0
+        ? DRAG_SCROLL_ZONE - (bottom - y)
+        : 0;
+
+  if (depth) {
+    const before = tabListEl.scrollTop;
+    const speed = (depth / DRAG_SCROLL_ZONE) * DRAG_SCROLL_MAX_SPEED;
+
+    tabListEl.scrollTop += speed < 0 ? Math.floor(speed) : Math.ceil(speed);
+
+    if (tabListEl.scrollTop !== before) updatePlaceholder(y);
+  }
+
+  requestAnimationFrame(autoScrollDuringDrag);
+}
+
 function startCustomDrag(state) {
-  const { item, tab, pointerEvent } = state;
+  const { item, tab, group, pointerEvent } = state;
   const rect = item.getBoundingClientRect();
   const preview = item.cloneNode(true);
 
   item.classList.add("dragging");
+
+  // A group travels as just its header while it is being moved.
+  if (group) {
+    let member = item.nextElementSibling;
+
+    while (member && !member.classList.contains("group-header")) {
+      member.hidden = true;
+      member = member.nextElementSibling;
+    }
+  }
+
   document.body.classList.add("tab-dragging");
   preview.classList.add("tab-drag-preview");
   preview.classList.remove("active", "entering");
@@ -651,23 +914,26 @@ function startCustomDrag(state) {
   document.body.appendChild(preview);
 
   customDragState = {
-    tabId: tab.id,
+    tabId: tab && tab.id,
+    group,
     item,
     preview,
     grabOffsetY: pointerEvent.clientY - rect.top,
     railLeft: rect.left,
     railWidth: rect.width,
+    lastY: pointerEvent.clientY,
   };
 
   pendingDragState = null;
   updatePlaceholder(pointerEvent.clientY);
+  requestAnimationFrame(autoScrollDuringDrag);
 }
 
 function finishCustomDrag() {
   if (!customDragState) return;
 
-  const { tabId, item, preview } = customDragState;
-  const insertIdx = getPlaceholderInsertIndex();
+  const { tabId, group, item, preview } = customDragState;
+  const target = group ? getGroupDropIndex() : getDropTarget();
 
   item.classList.remove("dragging");
   document.body.classList.remove("tab-dragging");
@@ -675,7 +941,12 @@ function finishCustomDrag() {
   customDragState = null;
   removePlaceholder();
 
-  if (insertIdx === -1) return;
+  if (group) {
+    moveGroup(group, target);
+    return;
+  }
+
+  if (!target) return;
 
   const fromIdx = tabs.findIndex((t) => t.id === tabId);
 
@@ -683,18 +954,22 @@ function finishCustomDrag() {
 
   const [moved] = tabs.splice(fromIdx, 1);
 
-  let targetIdx = insertIdx;
+  moved.groupId = target.groupId;
 
-  if (fromIdx < insertIdx) {
-    targetIdx -= 1;
+  let targetIdx = 0;
+
+  if (target.afterTabId) {
+    targetIdx = tabs.findIndex((t) => t.id === target.afterTabId) + 1;
+  } else if (target.groupId) {
+    targetIdx = tabs.findIndex((t) => t.groupId === target.groupId);
+    if (targetIdx === -1) targetIdx = tabs.length;
   }
 
-  targetIdx = Math.max(0, Math.min(targetIdx, tabs.length));
-
   tabs.splice(targetIdx, 0, moved);
+  sortTabsByGroup();
 
   persistIndex();
-  renderTabs();
+  renderTabs({ revealActive: false });
 }
 
 window.addEventListener("pointermove", (e) => {
@@ -712,6 +987,8 @@ window.addEventListener("pointermove", (e) => {
 
   if (!customDragState) return;
 
+  customDragState.lastY = e.clientY;
+
   const { item, preview, grabOffsetY, railLeft, railWidth } = customDragState;
   const listRect = tabListEl.getBoundingClientRect();
   const previewHeight = item.getBoundingClientRect().height;
@@ -724,9 +1001,7 @@ window.addEventListener("pointermove", (e) => {
   preview.style.top = `${top}px`;
   preview.style.width = `${railWidth}px`;
 
-  updatePlaceholder(
-    Math.max(listRect.top, Math.min(e.clientY, listRect.bottom)),
-  );
+  updatePlaceholder(clampToTabList(e.clientY));
 });
 
 window.addEventListener("pointerup", () => {
@@ -742,10 +1017,18 @@ window.addEventListener("pointercancel", () => {
 // RENDER TABS
 // =========================================================
 
-function renderTabs() {
-  tabListEl.replaceChildren();
+// A rebuild while the rail is open shouldn't replay its opening animation.
+sidebar.addEventListener("pointerleave", () => {
+  tabListEl.classList.remove("no-intro");
+});
 
-  tabs.forEach((tab) => {
+function renderTabs({ revealActive = true } = {}) {
+  const scrollTop = tabListEl.scrollTop;
+
+  tabListEl.replaceChildren();
+  tabListEl.classList.toggle("no-intro", sidebar.matches(":hover"));
+
+  const appendTab = (tab) => {
     const item = document.createElement("div");
 
     item.className = "tab-item";
@@ -768,35 +1051,20 @@ function renderTabs() {
     label.className = "tab-title";
     label.textContent = tab.title;
 
-    const dirtyDot = document.createElement("span");
-    dirtyDot.className = "tab-dirty dirty-dot";
-    dirtyDot.title = "Unsaved changes";
-
     const actions = document.createElement("span");
     actions.className = "tab-actions";
-
-    const renameBtn = document.createElement("button");
-    renameBtn.className = "tab-action-btn";
-    renameBtn.title = "Rename";
-    renameBtn.innerHTML =
-      '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
-    renameBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      openRenameDialog(tab);
-    });
 
     const closeBtn = document.createElement("button");
     closeBtn.className = "tab-action-btn";
     closeBtn.title = "Close";
-    closeBtn.innerHTML =
-      '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>';
+    closeBtn.innerHTML = CLOSE_ICON;
     closeBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       closeTab(tab.id);
     });
 
-    actions.append(renameBtn, closeBtn);
-    item.append(badge, label, dirtyDot, actions);
+    actions.append(closeBtn);
+    item.append(badge, label, actions);
 
     item.addEventListener("click", () => {
       switchTab(tab.id);
@@ -822,12 +1090,38 @@ function renderTabs() {
     });
 
     tabListEl.appendChild(item);
+  };
+
+  tabs.filter((tab) => !tab.groupId).forEach(appendTab);
+
+  groups.forEach((group) => {
+    const members = tabs.filter((tab) => tab.groupId === group.id);
+
+    tabListEl.appendChild(createGroupHeader(group, members.length));
+
+    if (group.collapsed) return;
+
+    if (!members.length) {
+      const hint = document.createElement("div");
+
+      hint.className = "group-empty";
+      hint.textContent = "Drag tabs here";
+      tabListEl.appendChild(hint);
+    }
+
+    members.forEach(appendTab);
   });
 
   enteringTabId = null;
 
-  const activeItem = tabListEl.querySelector(".tab-item.active");
-  if (activeItem) activeItem.scrollIntoView({ block: "nearest" });
+  updateGroupHighlight();
+
+  tabListEl.scrollTop = scrollTop;
+
+  if (revealActive) {
+    const activeItem = tabListEl.querySelector(".tab-item.active");
+    if (activeItem) activeItem.scrollIntoView({ block: "nearest" });
+  }
 
   updateDocumentTitle();
 }
@@ -838,24 +1132,32 @@ function renderTabs() {
 
 const renameDialog = document.getElementById("rename-dialog");
 
+const renameLabel = document.getElementById("rename-label");
+
 const renameInput = document.getElementById("rename-input");
 
-let renameTargetId = null;
+let onRenameConfirm = null;
 
-function openRenameDialog(tab) {
-  renameTargetId = tab.id;
+function openNameDialog(label, value, onConfirm) {
+  if (renameDialog.open) return;
 
-  renameInput.value = tab.title;
+  onRenameConfirm = onConfirm;
+
+  renameLabel.textContent = label;
+
+  renameInput.value = value;
 
   renameDialog.showModal();
 
   renameInput.select();
 }
 
+function openRenameDialog(tab) {
+  openNameDialog("Tab name:", tab.title, (value) => renameTab(tab.id, value));
+}
+
 function confirmRename() {
-  if (renameTargetId) {
-    renameTab(renameTargetId, renameInput.value);
-  }
+  if (onRenameConfirm) onRenameConfirm(renameInput.value);
 
   renameDialog.close();
 }
@@ -2082,6 +2384,10 @@ window.api.onMenuAction(({ action, payload }) => {
       createTab();
       break;
 
+    case "new-group":
+      promptNewGroup();
+      break;
+
     case "open":
       doOpen();
       break;
@@ -2216,6 +2522,9 @@ function applySettings(settings) {
   fontSize = settings.fontSize || fontSize;
   zoomLevel = settings.zoom || zoomLevel;
   ratioSelection = settings.ratio || ratioSelection;
+  groups = Array.isArray(settings.groups)
+    ? settings.groups.filter((g) => g && g.id && g.name)
+    : [];
 
   setTheme(settings.theme);
   setWordWrap(settings.wordWrap !== false);
@@ -2243,6 +2552,7 @@ async function init() {
         id: t.id,
         title: t.title || "Untitled",
         color: Number.isInteger(t.color) && TAB_COLORS[t.color] ? t.color : null,
+        groupId: groups.some((g) => g.id === t.group) ? t.group : null,
         content: t.content || "",
         savedContent: t.savedContent ?? null,
         filePath: t.filePath || null,
@@ -2250,6 +2560,8 @@ async function init() {
         eol: t.eol || defaultEol,
         persistedDirty: t.dirty,
       }));
+
+    sortTabsByGroup();
 
     // Tabs saved before badges existed get a colour now, saved right away.
     const uncolored = tabs.filter((tab) => tab.color === null);

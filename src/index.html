@@ -16,6 +16,7 @@
         <button class="app-menu-trigger" type="button" aria-expanded="false">File</button>
         <div class="app-menu-popup">
           <button data-action="new-tab">New Tab <span>Ctrl+N</span></button>
+          <button data-action="new-group">New Group <span>Ctrl+Shift+N</span></button>
           <button data-action="open">Open... <span>Ctrl+O</span></button>
           <hr />
           <button data-action="save">Save <span>Ctrl+S</span></button>
@@ -74,24 +75,27 @@
     <div id="app">
       <nav id="sidebar">
         <div id="tab-list"></div>
-        <button
-          id="new-tab-btn-bottom"
-          class="sidebar-new sidebar-new-bottom"
-          title="New tab (Ctrl+N)"
-        >
-          <svg
-            viewBox="0 0 24 24"
-            width="14"
-            height="14"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2.4"
-            stroke-linecap="round"
+        <div class="sidebar-actions">
+          <button
+            id="new-tab-btn-bottom"
+            class="sidebar-new sidebar-new-bottom"
+            title="New tab (Ctrl+N)"
           >
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-        </button>
+            <svg
+              viewBox="0 0 24 24"
+              width="14"
+              height="14"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.4"
+              stroke-linecap="round"
+            >
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+          </button>
+          <button id="new-group-btn" class="sidebar-new-group" type="button" title="New group (Ctrl+Shift+N)">New group</button>
+        </div>
       </nav>
 
       <div id="content-shell">
@@ -220,7 +224,7 @@
 
     <dialog id="rename-dialog">
       <form method="dialog" id="rename-form">
-        <label>Tab name: <input id="rename-input" type="text" /></label>
+        <label><span id="rename-label">Tab name:</span> <input id="rename-input" type="text" /></label>
         <div class="dialog-actions">
           <button id="rename-ok-btn" type="submit" class="primary-btn">OK</button>
           <button id="rename-close-btn" type="button">Cancel</button>

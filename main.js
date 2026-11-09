@@ -26,6 +26,7 @@ const DEFAULT_SETTINGS = {
   ratio: "4:5",
   bounds: null,
   maximized: false,
+  groups: [],
 };
 
 // ---- Storage helpers ----
@@ -309,6 +310,11 @@ function buildMenu() {
           label: "New Tab",
           accelerator: "CmdOrCtrl+N",
           click: () => sendMenuAction("new-tab"),
+        },
+        {
+          label: "New Group",
+          accelerator: "CmdOrCtrl+Shift+N",
+          click: () => sendMenuAction("new-group"),
         },
         {
           label: "Open...",
@@ -727,7 +733,7 @@ ipcMain.handle("settings:get", () => settings);
 
 function updateSettings(partial) {
   if (!partial || typeof partial !== "object") return;
-  const allowed = ["theme", "fontFamily", "fontSize", "zoom", "wordWrap", "statusBar"];
+  const allowed = ["theme", "fontFamily", "fontSize", "zoom", "wordWrap", "statusBar", "groups"];
   allowed.forEach((key) => {
     if (key in partial) settings[key] = partial[key];
   });

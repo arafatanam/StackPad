@@ -428,6 +428,38 @@ body.tab-dragging #sidebar {
   margin: 8px 8px 8px 8px;
 }
 
+.sidebar-actions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* Only the open rail has room for this button. */
+.sidebar-new-group {
+  display: none;
+  flex-shrink: 0;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.sidebar-new-group:hover {
+  background: var(--tab-hover);
+}
+
+#sidebar:hover .sidebar-new-group,
+body.tab-dragging #sidebar .sidebar-new-group {
+  display: block;
+  animation: fade-slide-in var(--dur-slow) var(--ease-out);
+}
+
 #tab-list {
   display: flex;
   flex-direction: column;
@@ -469,6 +501,16 @@ body.tab-dragging #sidebar {
   box-shadow: inset 3px 0 0 var(--accent);
 }
 
+/* Unsaved tabs carry the same left notch, which takes no room from the title. */
+.tab-item.dirty {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+/* The notch is for the open rail; the collapsed rail shows just the badges. */
+body:not(.tab-dragging) #sidebar:not(:hover) .tab-item {
+  box-shadow: none;
+}
+
 .tab-item.entering {
   animation: tab-in var(--dur-slow) var(--ease-out);
 }
@@ -478,8 +520,13 @@ body.tab-dragging #sidebar {
   animation: tab-out var(--dur) ease-in forwards;
 }
 
-.tab-item.dragging {
+.tab-item.dragging,
+.group-header.dragging {
   opacity: 0.4;
+}
+
+#tab-list > [hidden] {
+  display: none;
 }
 
 .tab-drag-preview {
@@ -525,8 +572,14 @@ body.tab-dragging #sidebar {
   flex-shrink: 0;
 }
 
-/* Initials badge. It sits at the same spot whether the rail is collapsed
-   or open, so expanding the rail never makes it jump. */
+/* Initials badge. Only the collapsed rail shows it: once the rail is open
+   the title identifies the tab. */
+#sidebar:hover .tab-badge,
+body.tab-dragging #sidebar .tab-badge,
+.tab-drag-preview .tab-badge {
+  display: none;
+}
+
 .tab-badge {
   position: relative;
   display: inline-flex;
@@ -584,12 +637,134 @@ body.tab-dragging #sidebar .tab-actions {
 }
 
 #sidebar:hover .tab-title,
-#sidebar:hover .tab-actions {
+#sidebar:hover .tab-actions,
+#sidebar:hover .group-chevron,
+#sidebar:hover .group-name {
   animation: fade-slide-in var(--dur-slow) var(--ease-out);
 }
 
-/* Unsaved-changes dot: inline next to the title when the rail is open,
-   beside the badge when it is collapsed. */
+#tab-list.no-intro .tab-title,
+#tab-list.no-intro .tab-actions,
+#tab-list.no-intro .group-chevron,
+#tab-list.no-intro .group-name {
+  animation: none;
+}
+
+/* ---------- Tab groups ---------- */
+
+/* Tabs in a group aren't indented, so the header sets itself apart with a
+   tinted band and small capitals. It is the same height open or collapsed,
+   so the rows below it don't shift when the rail expands under the pointer. */
+.group-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 8px;
+  margin: 4px 4px 2px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--text) 7%, transparent);
+  color: var(--statusbar-text);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    background 0.12s ease,
+    color 0.12s ease;
+}
+
+.group-header:hover {
+  background: color-mix(in srgb, var(--text) 13%, transparent);
+  color: var(--text);
+}
+
+.group-header.collapsed.has-active {
+  color: var(--accent);
+}
+
+.group-chevron {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.group-header.collapsed .group-chevron {
+  transform: rotate(-90deg);
+}
+
+.group-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.group-count {
+  flex-shrink: 0;
+  font-weight: 500;
+}
+
+.group-empty {
+  flex-shrink: 0;
+  height: 24px;
+  padding-left: 12px;
+  color: var(--statusbar-text);
+  font-size: 12px;
+  line-height: 24px;
+  white-space: nowrap;
+}
+
+/* The rename and delete buttons appear only on the header being pointed at. */
+#sidebar:hover .group-header:not(:hover) .tab-actions,
+body.tab-dragging #sidebar .group-header .tab-actions {
+  display: none;
+}
+
+#sidebar:hover .group-header:hover .group-count {
+  display: none;
+}
+
+/* Collapsed rail: an open group is a thin divider and a folded group is a
+   small box with its tab count, lined up with the badges. */
+body:not(.tab-dragging) #sidebar:not(:hover) .group-header {
+  background: transparent;
+}
+
+body:not(.tab-dragging) #sidebar:not(:hover) .group-chevron,
+body:not(.tab-dragging) #sidebar:not(:hover) .group-name,
+body:not(.tab-dragging) #sidebar:not(:hover) .group-header:not(.collapsed) .group-count {
+  display: none;
+}
+
+body:not(.tab-dragging) #sidebar:not(:hover) .group-header:not(.collapsed)::before {
+  content: "";
+  width: 22px;
+  height: 1px;
+  background: var(--border);
+}
+
+body:not(.tab-dragging) #sidebar:not(:hover) .group-header.collapsed .group-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 11px;
+}
+
+body:not(.tab-dragging) #sidebar:not(:hover) .group-header.collapsed.has-active .group-count {
+  border-color: var(--accent);
+}
+
+body:not(.tab-dragging) #sidebar:not(:hover) .group-empty {
+  visibility: hidden;
+}
+
+/* The dot beside the document title above the editor. */
 .dirty-dot {
   display: inline-block;
   width: 7px;
@@ -601,32 +776,6 @@ body.tab-dragging #sidebar .tab-actions {
 
 .dirty-dot[hidden] {
   display: none;
-}
-
-.tab-dirty {
-  display: none;
-  flex-shrink: 0;
-}
-
-.tab-item.dirty .tab-dirty {
-  display: inline-block;
-}
-
-/* Collapsed rail: the dot hangs off the badge, vertically centred. */
-body:not(.tab-dragging) #sidebar:not(:hover) .tab-item.dirty .tab-dirty {
-  display: none;
-}
-
-body:not(.tab-dragging) #sidebar:not(:hover) .tab-item.dirty .tab-badge::after {
-  content: "";
-  position: absolute;
-  top: calc(50% - 3px);
-  left: calc(100% + 4px);
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--dirty);
-  animation: pop-in var(--dur-slow) var(--ease-spring);
 }
 
 .tab-action-btn {

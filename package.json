@@ -1,6 +1,6 @@
 {
   "name": "stackpad",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "StackPad is a lightweight desktop notepad with vertical tabs, window size presets and a clean light/dark theme.",
   "main": "main.js",
   "scripts": {

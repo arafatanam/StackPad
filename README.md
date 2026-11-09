@@ -37,18 +37,19 @@ Both apps are plain-text editors with tabs, find and replace, themes and session
 
 ### Tabs
 
-- Vertical tab rail with initials badges; untitled tabs show a page icon
+- Vertical tab rail with initials badges while collapsed; untitled tabs show a page icon
 - Badge colours are spread across a palette of 8, so neighbouring tabs rarely match
 - Expand the rail by hovering it; it slides over the editor instead of pushing it
 - Drag tabs up and down to reorder them
-- Rename from the pencil button, by double-clicking a tab, or by double-clicking the centred title above the editor
+- Organise tabs into named groups that fold away: drag a tab under a group to add it, or above the first group to take it out, and drag a group's header to reorder the groups
+- Rename by double-clicking a tab or the centred title above the editor
 - `Ctrl+Tab` / `Ctrl+Shift+Tab` cycles through tabs
 
 ### Never lose a note
 
 - Every tab and its contents are kept between sessions, including tabs you never saved to a file
 - Typing is saved continuously, and the last keystrokes are saved even if you close the app immediately
-- Unsaved changes are marked with a dot on the tab and next to the title
+- Unsaved changes are marked with a notch on the tab's left edge when the rail is open, and a dot next to the title above the editor
 - Closing a tab with unsaved changes asks **Save / Don't Save / Cancel**
 - App data is written safely, so a crash or power cut can't leave it half-written
 
@@ -88,6 +89,7 @@ Both apps are plain-text editors with tabs, find and replace, themes and session
 | Action                                     | Shortcut                                                       |
 | ------------------------------------------ | -------------------------------------------------------------- |
 | New tab                                    | `Ctrl+N`                                                       |
+| New group                                  | `Ctrl+Shift+N`                                                 |
 | Open                                       | `Ctrl+O`                                                       |
 | Save / Save As                             | `Ctrl+S` / `Ctrl+Shift+S`                                      |
 | Print                                      | `Ctrl+P`                                                       |
@@ -105,7 +107,7 @@ Both apps are plain-text editors with tabs, find and replace, themes and session
 
 ## Installing StackPad
 
-1. Download `StackPad v2.0.exe` from the project's **Releases** page.
+1. Download `StackPad v2.1.0.exe` from the project's **Releases** page.
 2. Run it. The setup wizard walks you through:
    - the license agreement,
    - installing **for just you** or **for everyone on this PC**,
@@ -139,8 +141,8 @@ StackPad keeps its data in `%APPDATA%\stackpad`:
 | File               | Contents                                                                  |
 | ------------------ | ------------------------------------------------------------------------- |
 | `drafts\*.txt`     | The text of every open tab                                                |
-| `notes-index.json` | Tab order, titles, badge colours and linked file paths                    |
-| `settings.json`    | Theme, font, zoom, word wrap, status bar, screen size and window position |
+| `notes-index.json` | Tab order, titles, badge colours, each tab's group and linked file paths  |
+| `settings.json`    | Theme, font, zoom, word wrap, status bar, screen size, window position and tab groups |
 
 Files you save with **Save / Save As** live wherever you put them. The drafts are StackPad's own copy, so tabs you never saved to a file are still there next time.
 
@@ -163,6 +165,23 @@ stackpad/
 ```
 
 ## Release notes
+
+### 2.1.0
+
+Tab groups, and more room for your tab titles.
+
+**New**
+
+- Tab groups: named sections in the rail that fold away and are remembered between sessions
+- Drag tabs into, out of and around groups, and drag a group's header to reorder the groups
+- **New Group** in the File menu and on the rail, with the `Ctrl+Shift+N` shortcut
+
+**Improved**
+
+- Tab titles have much more room: the open rail no longer shows the initials badge or a rename button (double-click a tab to rename it)
+- Unsaved tabs are marked with a notch on their left edge in the open rail instead of a dot that took up space
+- The collapsed rail shows only the initials badges, without the notch
+- The rail scrolls when you drag a tab or group near its top or bottom edge, and stays where you left it after you drop
 
 ### 2.0.0
 
