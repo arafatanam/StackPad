@@ -120,6 +120,17 @@ To uninstall, use **Settings → Apps → Installed apps → StackPad → Uninst
 
 > Windows SmartScreen may warn about an unrecognised app because the installer isn't code-signed. Choose **More info → Run anyway** to continue.
 
+### Linux
+
+Download `StackPad-2.1.0.AppImage` from the **Releases** page, then make it executable and run it:
+
+```bash
+chmod +x StackPad-2.1.0.AppImage
+./StackPad-2.1.0.AppImage
+```
+
+AppImages need FUSE. If it won't start, install it first (`sudo apt install libfuse2` on Ubuntu and Debian).
+
 ## Building from source
 
 Requirements: Windows 10 or 11, [Node.js](https://nodejs.org/) 18 or newer, and npm.
@@ -132,7 +143,11 @@ npm run dist    # build the installer
 
 `npm run dist` creates `dist/StackPad v<version>.exe`, the setup wizard described above. The first build may need **Developer Mode** turned on (Settings → System → For developers) or an Administrator terminal, because electron-builder creates symbolic links while preparing its tools.
 
-macOS and Linux can run StackPad from source with `npm start`; release builds are produced for Windows only.
+If the build stops with `status code 504`, GitHub's download servers failed while fetching electron-builder's tools. Run it again; once they are downloaded they are cached.
+
+The Linux AppImage can't be built on Windows, so GitHub Actions builds it (see `.github/workflows/build.yml`). Pushing a version tag such as `v2.2.0` builds both installers and creates a draft release with them attached.
+
+macOS isn't a release target, though StackPad can be run from source there with `npm start`.
 
 ## Where your notes are stored
 
@@ -150,6 +165,8 @@ Files you save with **Save / Save As** live wherever you put them. The drafts ar
 
 ```text
 stackpad/
+├── .github/workflows/
+│   └── build.yml             # builds the Windows and Linux installers on GitHub
 ├── build/
 │   ├── icon.ico              # app and installer icon
 │   ├── icon.png              # app icon (macOS/Linux, README)
@@ -175,6 +192,7 @@ Tab groups, and more room for your tab titles.
 - Tab groups: named sections in the rail that fold away and are remembered between sessions
 - Drag tabs into, out of and around groups, and drag a group's header to reorder the groups
 - **New Group** in the File menu and on the rail, with the `Ctrl+Shift+N` shortcut
+- A Linux build, as an AppImage
 
 **Improved**
 
