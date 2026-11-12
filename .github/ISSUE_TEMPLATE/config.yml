@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security problem
+    url: https://github.com/arafatanam/StackPad/security/advisories/new
+    about: Please report security problems privately.
+  - name: StackPad website
+    url: https://arafatanam.github.io/StackPad/
+    about: Download StackPad and read the FAQ.

@@ -6,9 +6,54 @@ const {
   dialog,
   screen,
   nativeTheme,
+  nativeImage,
+  shell,
 } = require("electron");
 const path = require("path");
 const fs = require("fs");
+const textfile = require("./lib/textfile");
+const updater = require("./lib/updater");
+const pkg = require("./package.json");
+
+const isWindows = process.platform === "win32";
+
+// Every web address the app can open. The page asks for a link by name, so
+// it can never be used to open an arbitrary URL.
+const WEBSITE = pkg.homepage.replace(/\/?$/, "/");
+const REPO = "https://github.com/arafatanam/StackPad";
+const LINKS = {
+  website: WEBSITE,
+  shortcuts: `${WEBSITE}#shortcuts`,
+  changelog: `${REPO}/blob/main/CHANGELOG.md`,
+  privacy: `${WEBSITE}privacy.html`,
+  source: REPO,
+  license: `${REPO}/blob/main/LICENSE`,
+  download: `${WEBSITE}#download`,
+};
+
+function osLabel() {
+  if (isWindows) {
+    // Windows 11 still reports itself as 10.0; build 22000+ is Windows 11.
+    const build = Number(require("os").release().split(".")[2]) || 0;
+    return build >= 22000 ? "Windows 11" : "Windows 10";
+  }
+  if (process.platform === "linux") return "Linux";
+  return process.platform;
+}
+
+function issueLink() {
+  const params = new URLSearchParams({
+    template: "bug_report.yml",
+    version: app.getVersion(),
+    os: `${osLabel()} (${process.arch})`,
+  });
+  return `${REPO}/issues/new?${params}`;
+}
+
+function openLink(name) {
+  const url = name === "report-issue" ? issueLink() : LINKS[name];
+  if (url) shell.openExternal(url);
+}
 
 const userDataPath = () => app.getPath("userData");
 const draftsDir = () => path.join(userDataPath(), "drafts");
@@ -27,6 +72,7 @@ const DEFAULT_SETTINGS = {
   bounds: null,
   maximized: false,
   groups: [],
+  autoUpdate: true,
 };
 
 // ---- Storage helpers ----
@@ -34,10 +80,8 @@ const DEFAULT_SETTINGS = {
 // Write to a temp file and rename it over the target, so a crash mid-write
 // can never leave a half-written index, draft or settings file behind.
 function writeFileAtomic(filePath, data) {
-  const tmp = `${filePath}.tmp`;
   try {
-    fs.writeFileSync(tmp, data, "utf-8");
-    fs.renameSync(tmp, filePath);
+    textfile.writeFileAtomic(filePath, data);
   } catch (e) {
     fs.writeFileSync(filePath, data, "utf-8");
   }
@@ -107,109 +151,10 @@ function saveSettings() {
   }
 }
 
-// ---- Text files: encoding and line endings ----
-//
-// The editor always works with "\n" line endings and plain JS strings. Each
-// file remembers the encoding and line-ending style it was opened with, and
-// is written back the same way, so saving never silently converts it.
+// ---- Text files ----
 
-const utf8Decoder = new TextDecoder("utf-8", { fatal: true });
-let cp1252Reverse = null;
-
-function getCp1252Reverse() {
-  if (!cp1252Reverse) {
-    cp1252Reverse = new Map();
-    const decoder = new TextDecoder("windows-1252");
-    for (let byte = 0x80; byte <= 0x9f; byte++) {
-      cp1252Reverse.set(decoder.decode(Buffer.from([byte])), byte);
-    }
-  }
-  return cp1252Reverse;
-}
-
-function decodeText(buffer) {
-  if (buffer[0] === 0xef && buffer[1] === 0xbb && buffer[2] === 0xbf) {
-    return { text: buffer.toString("utf8", 3), encoding: "utf-8-bom" };
-  }
-  if (buffer[0] === 0xff && buffer[1] === 0xfe) {
-    return { text: buffer.toString("utf16le", 2), encoding: "utf-16le" };
-  }
-  if (buffer[0] === 0xfe && buffer[1] === 0xff) {
-    return {
-      text: new TextDecoder("utf-16be").decode(buffer.subarray(2)),
-      encoding: "utf-16be",
-    };
-  }
-  try {
-    return { text: utf8Decoder.decode(buffer), encoding: "utf-8" };
-  } catch (e) {
-    return {
-      text: new TextDecoder("windows-1252").decode(buffer),
-      encoding: "windows-1252",
-    };
-  }
-}
-
-function encodeCp1252(text) {
-  const reverse = getCp1252Reverse();
-  const bytes = Buffer.alloc(text.length);
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
-    const code = ch.charCodeAt(0);
-    if (code < 0x80 || (code >= 0xa0 && code <= 0xff)) {
-      bytes[i] = code;
-    } else if (reverse.has(ch)) {
-      bytes[i] = reverse.get(ch);
-    } else {
-      return null; // character not representable in ANSI
-    }
-  }
-  return bytes;
-}
-
-function encodeText(text, encoding) {
-  switch (encoding) {
-    case "utf-8-bom":
-      return {
-        buffer: Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from(text, "utf8")]),
-        encoding,
-      };
-    case "utf-16le":
-      return {
-        buffer: Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from(text, "utf16le")]),
-        encoding,
-      };
-    case "utf-16be": {
-      const body = Buffer.from(text, "utf16le");
-      body.swap16();
-      return { buffer: Buffer.concat([Buffer.from([0xfe, 0xff]), body]), encoding };
-    }
-    case "windows-1252": {
-      const bytes = encodeCp1252(text);
-      // Text typed since opening may not fit ANSI (e.g. emoji); upgrade to UTF-8
-      // rather than losing characters.
-      if (bytes) return { buffer: bytes, encoding };
-      return { buffer: Buffer.from(text, "utf8"), encoding: "utf-8" };
-    }
-    default:
-      return { buffer: Buffer.from(text, "utf8"), encoding: "utf-8" };
-  }
-}
-
-const defaultEol = () => (process.platform === "win32" ? "crlf" : "lf");
-
-function readTextFile(filePath) {
-  const { text, encoding } = decodeText(fs.readFileSync(filePath));
-  const eol = text.includes("\r\n") ? "crlf" : text.includes("\n") ? "lf" : defaultEol();
-  return { content: text.replace(/\r\n?/g, "\n"), encoding, eol };
-}
-
-function writeTextFile(filePath, content, encoding, eol) {
-  const text = eol === "lf" ? content : content.replace(/\n/g, "\r\n");
-  const encoded = encodeText(text, encoding);
-  fs.writeFileSync(filePath, encoded.buffer);
-  return encoded.encoding;
-}
+const defaultEol = () => textfile.defaultEol();
+const { readTextFile, writeTextFile, fileStamp, sameStamp } = textfile;
 
 // A textarea becomes unusable long before this, and it keeps a stray
 // multi-gigabyte file from freezing the app.
@@ -285,9 +230,12 @@ if (process.platform === "win32") {
   app.setAppUserModelId("com.stackpad.app");
 }
 
+function sendToWindow(channel, data) {
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(channel, data);
+}
+
 function sendMenuAction(action, payload) {
-  if (mainWindow)
-    mainWindow.webContents.send("menu-action", { action, payload });
+  sendToWindow("menu-action", { action, payload });
 }
 
 function selectTheme(menu, selectedId, action) {
@@ -488,6 +436,29 @@ function buildMenu() {
         },
       ],
     },
+    {
+      label: "Help",
+      submenu: [
+        { label: "StackPad Website", click: () => openLink("website") },
+        { label: "Keyboard Shortcuts", click: () => openLink("shortcuts") },
+        { label: "Release Notes", click: () => openLink("changelog") },
+        { label: "Report a Problem...", click: () => openLink("report-issue") },
+        { type: "separator" },
+        {
+          label: "Check for Updates...",
+          click: () => sendMenuAction("check-updates"),
+        },
+        {
+          id: "auto-update",
+          label: "Check for Updates Automatically",
+          type: "checkbox",
+          checked: settings.autoUpdate !== false,
+          click: (item) => sendMenuAction("auto-update", item.checked),
+        },
+        { type: "separator" },
+        { label: "About StackPad", click: () => sendMenuAction("about") },
+      ],
+    },
   ];
 
   appMenu = Menu.buildFromTemplate(template);
@@ -622,7 +593,8 @@ function createWindow() {
     show: false,
     backgroundColor: dark ? "#1f1f1f" : "#ffffff",
     title: "StackPad",
-    icon: path.join(__dirname, "build", "icon.ico"),
+    // Linux window managers need a PNG; Windows uses the multi-size ICO.
+    icon: path.join(__dirname, "build", isWindows ? "icon.ico" : "icon.png"),
     ...(process.platform === "win32"
       ? {
           titleBarStyle: "hidden",
@@ -643,6 +615,10 @@ function createWindow() {
   // Never let a dropped file or stray link replace the app's own page.
   mainWindow.webContents.on("will-navigate", (event) => event.preventDefault());
   mainWindow.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+
+  // Lets the page check open files for outside changes when the user
+  // comes back to StackPad.
+  mainWindow.on("focus", () => sendToWindow("window-focused"));
 
   // A user-driven resize turns a ratio preset into Freeform.
   const onUserResize = () => {
@@ -674,6 +650,11 @@ app.whenReady().then(() => {
   loadSettings();
   createWindow();
 
+  updater.init({
+    sendToWindow,
+    autoCheckEnabled: () => settings.autoUpdate !== false,
+  });
+
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
@@ -699,7 +680,7 @@ ipcMain.on("menu:action", (_event, data) => {
     ["theme-light", "theme-dark", "theme-system"].forEach((id) => {
       appMenu.getMenuItemById(id).checked = id === action;
     });
-  } else if (action === "word-wrap" || action === "status-bar") {
+  } else if (["word-wrap", "status-bar", "auto-update"].includes(action)) {
     appMenu.getMenuItemById(action).checked = Boolean(payload);
   }
 
@@ -733,7 +714,16 @@ ipcMain.handle("settings:get", () => settings);
 
 function updateSettings(partial) {
   if (!partial || typeof partial !== "object") return;
-  const allowed = ["theme", "fontFamily", "fontSize", "zoom", "wordWrap", "statusBar", "groups"];
+  const allowed = [
+    "theme",
+    "fontFamily",
+    "fontSize",
+    "zoom",
+    "wordWrap",
+    "statusBar",
+    "groups",
+    "autoUpdate",
+  ];
   allowed.forEach((key) => {
     if (key in partial) settings[key] = partial[key];
   });
@@ -769,6 +759,13 @@ ipcMain.handle("notes:load-all", () => {
       savedContent: file ? file.content : null,
       encoding: file?.encoding || entry.encoding || "utf-8",
       eol: entry.eol || file?.eol || defaultEol(),
+      stamp: file ? file.stamp : null,
+      // Unsaved changes, and the file was edited elsewhere while StackPad
+      // was closed: the page asks which version to keep.
+      changedWhileClosed: Boolean(
+        useDraft && file && entry.stamp && !sameStamp(entry.stamp, file.stamp),
+      ),
+      missing: Boolean(entry.filePath && !file),
     };
   });
 });
@@ -842,7 +839,7 @@ ipcMain.handle(
       return {
         filePath: result.filePath,
         name: path.basename(result.filePath, path.extname(result.filePath)),
-        encoding: writeTextFile(result.filePath, content, encoding, eol),
+        ...writeTextFile(result.filePath, content, encoding, eol),
       };
     } catch (e) {
       return { filePath: result.filePath, error: e.message };
@@ -852,7 +849,7 @@ ipcMain.handle(
 
 ipcMain.handle("file:save", (event, { filePath, content, encoding, eol }) => {
   try {
-    return { filePath, encoding: writeTextFile(filePath, content, encoding, eol) };
+    return { filePath, ...writeTextFile(filePath, content, encoding, eol) };
   } catch (e) {
     return { filePath, error: e.message };
   }
@@ -864,3 +861,52 @@ ipcMain.handle("app:print", () => {
   if (mainWindow) mainWindow.webContents.print({ silent: false });
   return true;
 });
+
+// ---- IPC: outside changes to open files ----
+
+// entries: [{ id, filePath, stamp }]. Only files whose stamp moved are read
+// again; the page decides what to do with each change.
+ipcMain.handle("files:check", (event, entries) =>
+  (Array.isArray(entries) ? entries : [])
+    .filter((e) => e && typeof e.filePath === "string" && e.filePath)
+    .map(({ id, filePath, stamp }) => {
+      const current = fileStamp(filePath);
+      if (!current) return { id, status: stamp === "missing" ? "unchanged" : "missing" };
+      if (sameStamp(current, stamp)) return { id, status: "unchanged" };
+      if (current.size > MAX_FILE_BYTES) return { id, status: "unchanged" };
+      try {
+        return { id, status: "changed", file: readTextFile(filePath) };
+      } catch (e) {
+        return { id, status: "unchanged" };
+      }
+    }),
+);
+
+// ---- IPC: help, about and updates ----
+
+ipcMain.on("app:open-link", (_event, name) => openLink(name));
+
+ipcMain.handle("app:info", () => {
+  let icon = null;
+  try {
+    icon = nativeImage
+      .createFromPath(path.join(__dirname, "build", "icon.png"))
+      .resize({ width: 128, height: 128, quality: "best" })
+      .toDataURL();
+  } catch (e) {
+    // The dialog works without the logo.
+  }
+  return {
+    name: "StackPad",
+    version: app.getVersion(),
+    electron: process.versions.electron,
+    chrome: process.versions.chrome,
+    os: `${osLabel()} (${process.arch})`,
+    copyright: pkg.build?.copyright || "",
+    updateMode: updater.updateMode(),
+    icon,
+  };
+});
+
+ipcMain.handle("update:check", () => updater.checkNow());
+ipcMain.handle("update:install", () => updater.installNow());

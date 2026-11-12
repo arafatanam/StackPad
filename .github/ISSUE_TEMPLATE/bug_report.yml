@@ -1,0 +1,49 @@
+name: Bug report
+description: Something in StackPad doesn't work as it should
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this. **Please don't include private note contents.** For security problems, use the Security tab instead.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+      placeholder: |
+        1. Opened a file with...
+        2. Pressed...
+        3. Expected... but...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: StackPad version
+      description: Help → About StackPad → Copy details
+      placeholder: "2.2.0"
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: "Windows 11 (x64) / Ubuntu 24.04"
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How did you install StackPad?
+      options:
+        - Windows installer (.exe)
+        - Microsoft Store
+        - Linux AppImage
+        - Linux .deb
+        - Running from source
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Screenshots, the file's encoding (shown in the status bar), how often it happens...

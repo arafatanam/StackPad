@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Privacy policy · StackPad</title>
+    <meta name="description" content="StackPad has no accounts, analytics or telemetry. Here's exactly what it stores and the one network request it makes." />
+    <meta name="theme-color" content="#1e3a8a" />
+    <link rel="canonical" href="https://arafatanam.github.io/StackPad/privacy.html" />
+    <link rel="icon" type="image/png" href="assets/favicon-64.png" />
+    <link rel="stylesheet" href="assets/site.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="site-header">
+      <div class="wrap header-inner">
+        <a class="brand" href="./" aria-label="StackPad home">
+          <img src="assets/favicon-64.png" alt="" width="28" height="28" />
+          <span>StackPad</span>
+        </a>
+        <nav class="site-nav" aria-label="Main">
+          <a href="./#features">Features</a>
+          <a href="./#faq">FAQ</a>
+          <a href="https://github.com/arafatanam/StackPad">GitHub</a>
+        </nav>
+        <a class="btn btn-small" href="./#download">Download</a>
+      </div>
+    </header>
+
+    <main id="main" class="wrap doc">
+      <h1>Privacy policy</h1>
+      <p class="updated">Last updated 12 November 2026</p>
+
+      <p>
+        StackPad is a notepad that runs entirely on your computer. It has <strong>no accounts, no
+        analytics, no telemetry, no ads and no AI features</strong>.
+      </p>
+
+      <h2>What StackPad stores</h2>
+      <p>Everything StackPad keeps stays on your computer, in your user profile:</p>
+      <ul>
+        <li><strong>Windows:</strong> <code>%APPDATA%\stackpad</code></li>
+        <li><strong>Linux:</strong> <code>~/.config/stackpad</code></li>
+      </ul>
+      <p>
+        That folder holds the text of your open tabs, their titles and order, and your settings
+        (theme, font, window size and similar). Files you save with Save or Save As are stored wherever
+        you choose. StackPad never uploads any of it.
+      </p>
+
+      <h2>When StackPad connects to the internet</h2>
+      <p>StackPad makes exactly one kind of network request on its own: <strong>checking for updates</strong>.</p>
+      <ul>
+        <li>
+          About 15 seconds after it starts, and then every 6 hours, StackPad asks GitHub (where its
+          releases are published) whether a newer version exists. If there is one, it downloads it from GitHub.
+        </li>
+        <li>
+          Like any web request, this tells GitHub your IP address and that a copy of StackPad is checking for
+          updates. No note contents, file names, settings or identifiers are sent. GitHub's handling of the
+          request is covered by the
+          <a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement">GitHub Privacy Statement</a>.
+        </li>
+        <li>
+          You can turn this off with <strong>Help → Check for Updates Automatically</strong>. StackPad then only
+          checks when you choose <strong>Help → Check for Updates</strong>.
+        </li>
+        <li>Copies installed from the Microsoft Store don't check by themselves; the Store updates them.</li>
+      </ul>
+      <p>Links in the Help menu and the About box open in your web browser only when you click them.</p>
+
+      <h2>This website</h2>
+      <p>
+        This site is hosted on GitHub Pages. It sets no cookies, uses no analytics and loads no third-party
+        fonts or scripts. To show the latest version on the download buttons, your browser asks GitHub's public
+        API for the newest release, which GitHub may log as described in its privacy statement.
+      </p>
+
+      <h2>Bug reports</h2>
+      <p>
+        <strong>Help → Report a Problem</strong> opens a GitHub issue form in your browser with your StackPad version
+        and operating system filled in. Nothing is sent until you choose to submit it, and you can edit or remove
+        anything first.
+      </p>
+
+      <!-- SIGNPATH
+      <h2 id="code-signing">Code signing policy</h2>
+      <p>
+        Free code signing provided by <a href="https://about.signpath.io">SignPath.io</a>,
+        certificate by <a href="https://signpath.org">SignPath Foundation</a>.
+      </p>
+      <ul>
+        <li><strong>Committers and reviewers:</strong> <a href="https://github.com/arafatanam">Arafat Anam Chowdhury</a></li>
+        <li><strong>Approvers:</strong> <a href="https://github.com/arafatanam">Arafat Anam Chowdhury</a></li>
+      </ul>
+      <p>
+        Only files built by GitHub Actions from this project's public
+        <a href="https://github.com/arafatanam/StackPad">source code</a> are signed. Every signing request is
+        approved by hand. Signed files are the StackPad app (<code>StackPad.exe</code>) and its Windows installer.
+      </p>
+      <p>
+        This program will not transfer any information to other networked systems unless specifically requested
+        by the user or the person installing or operating it, except for the update check described above, which
+        can be turned off.
+      </p>
+      SIGNPATH -->
+
+      <h2>Changes</h2>
+      <p>
+        If this policy changes, the new version will be published here and noted in the
+        <a href="https://github.com/arafatanam/StackPad/blob/main/CHANGELOG.md">release notes</a>.
+      </p>
+
+      <h2>Contact</h2>
+      <p>Questions about privacy: <a href="https://github.com/arafatanam/StackPad/issues">open an issue on GitHub</a>.</p>
+    </main>
+
+    <footer class="site-footer">
+      <div class="wrap footer-inner">
+        <p>© 2026 Arafat Anam Chowdhury · StackPad is open source under the <a href="https://github.com/arafatanam/StackPad/blob/main/LICENSE">MIT License</a>.</p>
+        <nav aria-label="Footer">
+          <a href="./">Home</a>
+          <a href="https://github.com/arafatanam/StackPad">Source code</a>
+          <a href="https://github.com/arafatanam/StackPad/blob/main/CHANGELOG.md">Release notes</a>
+        </nav>
+      </div>
+    </footer>
+  </body>
+</html>

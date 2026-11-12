@@ -351,16 +351,16 @@ body.platform-darwin.status-bar-hidden #app {
   display: none;
 }
 
-#app-menu-bar .app-menu:last-child .app-menu-popup {
+#app-menu-bar .app-menu-narrow .app-menu-popup {
   width: 112px;
   min-width: 112px;
 }
 
-#app-menu-bar .app-menu:last-child .app-menu-popup button {
+#app-menu-bar .app-menu-narrow .app-menu-popup button {
   justify-content: flex-start;
 }
 
-#app-menu-bar .app-menu:last-child .app-menu-popup .menu-check {
+#app-menu-bar .app-menu-narrow .app-menu-popup .menu-check {
   margin-left: auto;
 }
 
@@ -1504,5 +1504,143 @@ body.ready #editor {
     tab-size: 4;
     white-space: pre-wrap;
     overflow-wrap: break-word;
+  }
+}
+
+/* ---------- About dialog ---------- */
+
+#about-dialog {
+  width: min(380px, calc(100vw - 32px));
+}
+
+.about-form {
+  align-items: center;
+  text-align: center;
+}
+
+.about-icon {
+  width: 72px;
+  height: 72px;
+  margin: 4px auto 0;
+}
+
+.about-name {
+  margin: 4px 0 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.about-version {
+  margin: 0;
+  color: var(--statusbar-text);
+  font-size: 13px;
+}
+
+.about-tagline {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.about-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2px 6px;
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--statusbar-text);
+}
+
+.link-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font-size: inherit;
+  cursor: pointer;
+}
+
+body.dark .link-btn {
+  color: #9db1ff;
+}
+
+.link-btn:hover {
+  text-decoration: underline;
+}
+
+.about-details {
+  margin: 0;
+  color: var(--statusbar-text);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.about-form .dialog-actions {
+  align-self: stretch;
+  margin-top: 6px;
+}
+
+/* ---------- Update notice ---------- */
+
+.update-notice {
+  position: fixed;
+  right: 16px;
+  bottom: 42px;
+  z-index: 55;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100vw - 32px);
+  padding: 8px 8px 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--bg);
+  color: var(--text);
+  box-shadow: 0 10px 26px var(--shadow-elevated);
+  font-size: 12.5px;
+  animation: notice-in var(--dur-slow) var(--ease-out);
+}
+
+.update-notice[hidden] {
+  display: none;
+}
+
+body.status-bar-hidden .update-notice {
+  bottom: 14px;
+}
+
+.update-notice button {
+  height: 26px;
+  padding: 0 11px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--toolbar-button-bg);
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.update-notice button:hover {
+  border-color: var(--accent);
+}
+
+.update-notice .primary-btn {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+}
+
+@keyframes notice-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .update-notice {
+    animation: none;
   }
 }

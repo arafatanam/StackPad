@@ -1,0 +1,19 @@
+name: Feature request
+description: Suggest an idea for StackPad
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: StackPad aims to stay a small, fast, plain-text notepad. Ideas that fit that are the most likely to be added.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: Describe the moment where StackPad gets in your way or falls short.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would help?
+      description: How you imagine it working. Other apps that do it well are useful examples.

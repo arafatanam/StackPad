@@ -1,4 +1,4 @@
-let tabs = []; // { id, title, color, groupId, content, savedContent, filePath, encoding, eol, view, persistedDirty }
+let tabs = []; // { id, title, color, groupId, content, savedContent, filePath, encoding, eol, stamp, view, persistedDirty }
 let groups = []; // { id, name, collapsed }
 let activeId = null;
 let wordWrap = true;
@@ -8,6 +8,7 @@ let fontFamily = "'Consolas', 'Courier New', monospace";
 let fontSize = 14;
 let ratioSelection = "4:5";
 let themeMode = "system";
+let autoUpdate = true;
 let saveTimer = null;
 let pendingDraftTab = null;
 let enteringTabId = null;
@@ -315,6 +316,7 @@ function buildIndex() {
     filePath: t.filePath || null,
     encoding: t.encoding,
     eol: t.eol,
+    stamp: t.stamp || null,
     dirty: isDirty(t),
     order: i,
     active: t.id === activeId,
@@ -388,6 +390,7 @@ function createTab(opts = {}) {
     filePath: opts.filePath || null,
     encoding: opts.encoding || "utf-8",
     eol: opts.eol || defaultEol,
+    stamp: opts.stamp || null,
   };
 
   tabs.push(tab);
@@ -1921,6 +1924,7 @@ function syncAppMenuChecks() {
   const checkedActions = new Set([
     ...(wordWrap ? ["word-wrap"] : []),
     ...(statusBarVisible ? ["status-bar"] : []),
+    ...(autoUpdate ? ["auto-update"] : []),
     `theme-${themeMode}`,
   ]);
 
@@ -2102,6 +2106,7 @@ async function openFileResults(results) {
       filePath: result.filePath,
       encoding: result.encoding,
       eol: result.eol,
+      stamp: result.stamp || null,
     };
 
     // Like Notepad, an untouched blank tab is reused instead of left behind.
@@ -2152,6 +2157,7 @@ async function saveTab(tab, forceSaveAs = false) {
 
   tab.filePath = result.filePath;
   tab.encoding = result.encoding;
+  tab.stamp = result.stamp || null;
   tab.savedContent = content;
   if (saveAs) tab.title = result.name;
 
@@ -2175,6 +2181,281 @@ function doSaveAs() {
 }
 
 window.api.onOpenFiles((files) => openFileResults(files));
+
+// =========================================================
+// OUTSIDE CHANGES TO OPEN FILES
+// =========================================================
+//
+// When StackPad gets focus again, every open file is compared with the disk.
+// A tab without unsaved changes quietly picks up the new version; a tab with
+// unsaved changes asks which version to keep, so neither is lost silently.
+
+let checkingFiles = false;
+let recheckFiles = false;
+
+function tabFileName(tab) {
+  return tab.filePath.split(/[\\/]/).pop();
+}
+
+function applyDiskVersion(tab, file) {
+  tab.content = file.content;
+  tab.savedContent = file.content;
+  tab.encoding = file.encoding;
+  tab.eol = file.eol;
+  tab.stamp = file.stamp || null;
+  window.api.saveDraft(tab.id, tab.content);
+
+  if (tab.id === activeId) {
+    const { selectionStart, selectionEnd, scrollTop } = editor;
+    const max = file.content.length;
+    editor.value = file.content;
+    editor.setSelectionRange(Math.min(selectionStart, max), Math.min(selectionEnd, max));
+    editor.scrollTop = scrollTop;
+    countsDirty = true;
+    onEditorContentChanged();
+    updateStatus();
+  } else if (tab.view) {
+    tab.view = null;
+  }
+
+  updateDirtyState(tab);
+}
+
+async function handleFileChange(tab, result) {
+  if (result.status === "missing") {
+    tab.stamp = "missing";
+    tab.savedContent = null; // nothing on disk matches the tab any more
+    updateDirtyState(tab);
+    showToast(`${tabFileName(tab)} was moved or deleted. Save to keep it.`);
+    return;
+  }
+
+  const file = result.file;
+
+  // Same text with a new timestamp (e.g. touched, or our own save racing
+  // the check): just remember the new stamp.
+  if (file.content === tab.savedContent) {
+    tab.stamp = file.stamp || null;
+    persistIndex();
+    return;
+  }
+
+  // The tab already says exactly what the file now says.
+  if (tab.id === activeId) tab.content = editor.value;
+  if (tab.content === file.content) {
+    applyDiskVersion(tab, file);
+    persistIndex();
+    return;
+  }
+
+  if (!isDirty(tab)) {
+    applyDiskVersion(tab, file);
+    persistIndex();
+    showToast(`Reloaded ${tabFileName(tab)}: it was changed outside StackPad`);
+    return;
+  }
+
+  if (tab.id !== activeId) switchTab(tab.id);
+
+  const choice = await showDialog({
+    message:
+      `“${tabFileName(tab)}” was changed by another program, and you have unsaved changes here.\n\n` +
+      "Reload the file and discard your changes, or keep your version? " +
+      "(Keeping yours replaces the other program's changes the next time you save.)",
+    buttons: [
+      { label: "Keep My Version", value: "keep", primary: true },
+      { label: "Reload From Disk", value: "reload" },
+    ],
+  });
+
+  if (choice === "reload") {
+    applyDiskVersion(tab, file);
+  } else {
+    // The file on disk is now the "saved" state, so the tab stays dirty.
+    tab.savedContent = file.content;
+    tab.stamp = file.stamp || null;
+    updateDirtyState(tab);
+  }
+  persistIndex();
+}
+
+async function checkOpenFiles() {
+  if (checkingFiles) {
+    recheckFiles = true;
+    return;
+  }
+
+  const fileTabs = tabs.filter((t) => t.filePath);
+  if (!fileTabs.length) return;
+
+  checkingFiles = true;
+  try {
+    const active = getActiveTab();
+    if (active) active.content = editor.value;
+
+    const results = await window.api.checkFiles(
+      fileTabs.map(({ id, filePath, stamp }) => ({ id, filePath, stamp })),
+    );
+
+    for (const result of results || []) {
+      if (result.status === "unchanged") continue;
+      const tab = tabs.find((t) => t.id === result.id);
+      if (tab && tab.filePath) await handleFileChange(tab, result);
+    }
+  } finally {
+    checkingFiles = false;
+    if (recheckFiles) {
+      recheckFiles = false;
+      checkOpenFiles();
+    }
+  }
+}
+
+window.api.onWindowFocused(() => {
+  // A dialog that is already open (e.g. Save / Don't Save) goes first.
+  if (document.querySelector("dialog[open]")) return;
+  checkOpenFiles();
+});
+
+// =========================================================
+// HELP, ABOUT AND UPDATES
+// =========================================================
+
+const aboutDialog = document.getElementById("about-dialog");
+const updateNotice = document.getElementById("update-notice");
+const updateNoticeText = document.getElementById("update-notice-text");
+let aboutDetails = "";
+
+document.addEventListener("click", (event) => {
+  const link = event.target.closest("[data-link]");
+  if (!link) return;
+  window.api.openLink(link.dataset.link);
+  closeAppMenus();
+});
+
+async function openAboutDialog() {
+  const info = await window.api.getAppInfo();
+  const icon = document.getElementById("about-icon");
+
+  if (info.icon) {
+    icon.src = info.icon;
+    icon.hidden = false;
+  }
+  document.getElementById("about-version").textContent = `Version ${info.version}`;
+  aboutDetails =
+    `StackPad ${info.version}\n${info.os}\n` +
+    `Electron ${info.electron} · Chromium ${info.chrome}`;
+  document.getElementById("about-details").textContent =
+    `${info.os} · Electron ${info.electron}`;
+  document.getElementById("about-copyright").textContent =
+    `${info.copyright.replace(/^Copyright \(c\)/i, "©")} · MIT License`;
+
+  aboutDialog.showModal();
+  aboutDialog.querySelector(".primary-btn").focus();
+}
+
+document.getElementById("about-copy-btn").addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText(aboutDetails);
+    showToast("Version details copied");
+  } catch (e) {
+    showToast("Couldn't copy to the clipboard");
+  }
+});
+
+let updateNoticeAction = null; // "restart" | "download"
+
+function showUpdateNotice(text, action) {
+  updateNoticeAction = action;
+  updateNoticeText.textContent = text;
+  document.getElementById("update-restart-btn").textContent =
+    action === "restart" ? "Restart now" : "Download";
+  updateNotice.hidden = false;
+}
+
+async function installUpdateNow() {
+  flushCurrentEditorContent();
+  flushSettings();
+  await window.api.installUpdate();
+}
+
+document.getElementById("update-restart-btn").addEventListener("click", () => {
+  updateNotice.hidden = true;
+  if (updateNoticeAction === "restart") installUpdateNow();
+  else window.api.openLink("download");
+});
+
+document.getElementById("update-later-btn").addEventListener("click", () => {
+  updateNotice.hidden = true;
+});
+
+window.api.onUpdateDownloaded(({ version }) => {
+  showUpdateNotice(
+    `StackPad ${version} is ready. It installs when you close StackPad, or restart now.`,
+    "restart",
+  );
+});
+
+window.api.onUpdateAvailable(({ version }) => {
+  showUpdateNotice(`StackPad ${version} is available.`, "download");
+});
+
+async function checkForUpdatesNow() {
+  showToast("Checking for updates…");
+  const result = await window.api.checkForUpdates();
+  const ok = [{ label: "OK", value: "ok", primary: true }];
+
+  switch (result.status) {
+    case "up-to-date":
+      await showDialog({ message: `You're up to date. StackPad ${result.version} is the latest version.`, buttons: ok });
+      break;
+    case "downloading":
+      await showDialog({
+        message: `StackPad ${result.version} is available and downloading in the background. You'll be told when it's ready to install.`,
+        buttons: ok,
+      });
+      break;
+    case "downloaded": {
+      const choice = await showDialog({
+        message: `StackPad ${result.version} is ready to install.`,
+        buttons: [
+          { label: "Restart Now", value: "restart", primary: true },
+          { label: "Later", value: "later" },
+        ],
+      });
+      if (choice === "restart") await installUpdateNow();
+      break;
+    }
+    case "available": {
+      const choice = await showDialog({
+        message: `StackPad ${result.version} is available. Download it from the StackPad website.`,
+        buttons: [
+          { label: "Open Website", value: "open", primary: true },
+          { label: "Later", value: "later" },
+        ],
+      });
+      if (choice === "open") window.api.openLink("download");
+      break;
+    }
+    case "unsupported":
+      await showDialog({
+        message:
+          result.reason === "store"
+            ? "This copy of StackPad is updated by the Microsoft Store."
+            : "Updates aren't checked when StackPad runs from source. Use git pull instead.",
+        buttons: ok,
+      });
+      break;
+    default:
+      await showDialog({ message: result.message || "Couldn't check for updates.", buttons: ok });
+  }
+}
+
+function setAutoUpdate(value) {
+  autoUpdate = value !== false;
+  saveSetting({ autoUpdate });
+  syncAppMenuChecks();
+}
 
 // Dropping files anywhere on the window opens them as tabs.
 let dragDepth = 0;
@@ -2361,6 +2642,7 @@ appMenuBar.addEventListener("click", (event) => {
       let payload;
       if (action === "word-wrap") payload = !wordWrap;
       if (action === "status-bar") payload = !statusBarVisible;
+      if (action === "auto-update") payload = !autoUpdate;
       window.api.triggerMenuAction(action, payload);
     }
   }
@@ -2468,6 +2750,18 @@ window.api.onMenuAction(({ action, payload }) => {
       setTheme("system");
       break;
 
+    case "check-updates":
+      checkForUpdatesNow();
+      break;
+
+    case "auto-update":
+      setAutoUpdate(payload);
+      break;
+
+    case "about":
+      openAboutDialog();
+      break;
+
     default:
       break;
   }
@@ -2522,6 +2816,7 @@ function applySettings(settings) {
   fontSize = settings.fontSize || fontSize;
   zoomLevel = settings.zoom || zoomLevel;
   ratioSelection = settings.ratio || ratioSelection;
+  autoUpdate = settings.autoUpdate !== false;
   groups = Array.isArray(settings.groups)
     ? settings.groups.filter((g) => g && g.id && g.name)
     : [];
@@ -2558,6 +2853,7 @@ async function init() {
         filePath: t.filePath || null,
         encoding: t.encoding || "utf-8",
         eol: t.eol || defaultEol,
+        stamp: t.missing ? "missing" : t.stamp || null,
         persistedDirty: t.dirty,
       }));
 
@@ -2583,6 +2879,26 @@ async function init() {
   await openFileResults(await window.api.takePendingFiles());
 
   window.api.appReady();
+
+  // Files edited elsewhere while StackPad was closed.
+  const missing = tabs.filter((t) => t.stamp === "missing");
+  if (missing.length) {
+    showToast(
+      missing.length === 1
+        ? `${tabFileName(missing[0])} was moved or deleted. Save to keep it.`
+        : `${missing.length} files were moved or deleted. Save them to keep them.`,
+    );
+  }
+  for (const t of saved || []) {
+    if (!t.changedWhileClosed) continue;
+    const tab = tabs.find((x) => x.id === t.id);
+    // Forget what was on disk so the check below asks which version to keep.
+    if (tab) {
+      tab.stamp = null;
+      tab.savedContent = null;
+    }
+  }
+  checkOpenFiles();
 
   // Transitions are switched on only after the window has painted, so the
   // saved theme and layout appear instantly instead of animating in. (A
