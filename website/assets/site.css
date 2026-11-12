@@ -268,6 +268,7 @@ code {
 /* ---------- Header ---------- */
 
 .site-header {
+  transition: box-shadow 240ms var(--ease);
   position: sticky;
   top: 0;
   z-index: 40;
@@ -979,14 +980,24 @@ kbd {
 
 /* ---------- Downloads ---------- */
 
+#download .section-head {
+  margin-inline: auto;
+  text-align: center;
+}
+
 .downloads {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: clamp(16px, 3vw, 28px);
   max-width: 860px;
+  margin-inline: auto;
 }
 
 .download-card {
+  transition:
+    transform 240ms var(--ease),
+    box-shadow 240ms var(--ease),
+    border-color 240ms var(--ease);
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -1048,7 +1059,7 @@ kbd {
 
 .next-steps {
   max-width: 860px;
-  margin-top: 28px;
+  margin: 28px auto 0;
   padding: 24px 28px;
   border: 1px solid var(--accent-text);
   border-radius: var(--radius);
@@ -1080,6 +1091,7 @@ kbd {
 
 .download-footnote {
   margin-top: 28px;
+  text-align: center;
   color: var(--muted);
   font-size: 0.95rem;
 }
@@ -1235,6 +1247,86 @@ kbd {
 }
 
 /* ---------- Motion ---------- */
+
+/* Header gains a soft shadow once the page scrolls. */
+.site-header.is-scrolled {
+  box-shadow: 0 6px 24px -12px rgb(15 23 42 / 0.25);
+}
+
+/* Hover lifts, only on devices that can hover. */
+@media (hover: hover) {
+  .download-card:hover {
+    transform: translateY(-4px);
+    box-shadow:
+      0 18px 40px -18px rgb(15 23 42 / 0.35),
+      var(--shadow);
+  }
+
+  .download-card.is-detected:hover {
+    box-shadow:
+      0 0 0 1px var(--accent-text),
+      0 18px 40px -18px rgb(15 23 42 / 0.35);
+  }
+
+  .icon-feature {
+    transition: transform 260ms var(--ease);
+  }
+
+  .features li:hover .icon-feature {
+    transform: translateY(-3px) rotate(-6deg);
+  }
+
+  .btn-primary .icon {
+    transition: transform 220ms var(--ease);
+  }
+
+  .btn-primary:hover .icon {
+    transform: translateY(2px);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Hero: copy and screenshot settle in on load. */
+  .hero-copy > * {
+    animation: rise 700ms var(--ease) both;
+  }
+
+  .hero-copy > :nth-child(2) { animation-delay: 80ms; }
+  .hero-copy > :nth-child(3) { animation-delay: 160ms; }
+  .hero-copy > :nth-child(4) { animation-delay: 240ms; }
+  .hero-copy > :nth-child(5) { animation-delay: 320ms; }
+
+  .hero-shot {
+    animation: settle 900ms 200ms var(--ease) both;
+  }
+
+  /* Sections: content rises into place as it scrolls into view (site.js). */
+  [data-reveal] {
+    opacity: 0;
+    transform: translateY(22px);
+    transition:
+      opacity 600ms var(--ease),
+      transform 700ms var(--ease);
+    transition-delay: calc(var(--i, 0) * 70ms);
+  }
+
+  [data-reveal].is-in {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* FAQ answers ease in when opened. */
+  .faq details[open] p {
+    animation: rise 320ms var(--ease);
+  }
+}
+
+@keyframes settle {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.97);
+  }
+}
 
 @keyframes rise {
   from {

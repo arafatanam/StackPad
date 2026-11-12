@@ -202,4 +202,70 @@
 
   render();
   loadLatestRelease();
+  setUpMotion();
+
+  // ---- Motion ----
+  // Sections rise into view as you scroll, and the header gains a shadow once
+  // the page has scrolled. Skipped entirely for people who prefer less motion.
+
+  function setUpMotion() {
+    const header = document.querySelector(".site-header");
+    if (header) {
+      const onScroll = () => header.classList.toggle("is-scrolled", window.scrollY > 8);
+      window.addEventListener("scroll", onScroll, { passive: true });
+      onScroll();
+    }
+
+    if (!("IntersectionObserver" in window)) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    const groups = [
+      ".section-head",
+      ".compare-demo > *",
+      ".checklist > li",
+      ".features > li",
+      ".wide-shot",
+      ".table-scroll",
+      ".privacy-inner > *",
+      ".shortcut-columns > *",
+      ".downloads > .download-card",
+      ".faq details",
+      ".final-inner > *",
+    ];
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          const el = entry.target;
+          el.classList.add("is-in");
+          observer.unobserve(el);
+          // Hand the element back to its normal styles (so hover effects
+          // aren't delayed) once the reveal has finished.
+          const done = () => {
+            el.removeAttribute("data-reveal");
+            el.classList.remove("is-in");
+            el.style.removeProperty("--i");
+          };
+          setTimeout(done, 1400);
+        });
+      },
+      { rootMargin: "0px 0px -8% 0px", threshold: 0.12 },
+    );
+
+    groups.forEach((selector) => {
+      const counts = new Map();
+      document.querySelectorAll(selector).forEach((el) => {
+        // Only animate what starts below the fold, so nothing already on
+        // screen blinks out and back in.
+        if (el.getBoundingClientRect().top < window.innerHeight) return;
+        const parent = el.parentElement;
+        const i = counts.get(parent) || 0;
+        counts.set(parent, i + 1);
+        el.style.setProperty("--i", String(Math.min(i, 5)));
+        el.setAttribute("data-reveal", "");
+        observer.observe(el);
+      });
+    });
+  }
 })();
