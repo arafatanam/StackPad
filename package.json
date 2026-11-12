@@ -1,17 +1,38 @@
 {
   "name": "stackpad",
-  "version": "2.1.0",
-  "description": "StackPad is a lightweight desktop notepad with vertical tabs, window size presets and a clean light/dark theme.",
+  "version": "2.2.0",
+  "description": "StackPad is a lightweight notepad for Windows and Linux with vertical tabs, tab groups, window size presets and a clean light/dark theme.",
+  "homepage": "https://arafatanam.github.io/StackPad/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/arafatanam/StackPad.git"
+  },
+  "bugs": {
+    "url": "https://github.com/arafatanam/StackPad/issues"
+  },
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "dist": "electron-builder"
+    "test": "node --test \"test/*.test.js\"",
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win",
+    "dist:store": "electron-builder --win appx"
   },
-  "author": "Arafat Anam Chowdhury",
+  "author": {
+    "name": "Arafat Anam Chowdhury",
+    "email": "arafatanam@users.noreply.github.com",
+    "url": "https://github.com/arafatanam"
+  },
   "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.11"
+  },
   "devDependencies": {
-    "electron": "^31.0.0",
-    "electron-builder": "^24.13.3"
+    "electron": "^45.3.1",
+    "electron-builder": "^26.18.0"
   },
   "build": {
     "appId": "com.stackpad.app",
@@ -21,6 +42,7 @@
     "files": [
       "main.js",
       "preload.js",
+      "lib/**/*",
       "src/**/*",
       "build/icon.*"
     ],
@@ -34,9 +56,11 @@
       }
     ],
     "win": {
-      "target": "nsis",
+      "target": [
+        "nsis"
+      ],
       "icon": "build/icon.ico",
-      "artifactName": "StackPad v${version}.${ext}"
+      "artifactName": "StackPad.v${version}.${ext}"
     },
     "nsis": {
       "oneClick": false,
@@ -53,14 +77,56 @@
       "shortcutName": "StackPad",
       "uninstallDisplayName": "StackPad",
       "runAfterFinish": true,
-      "deleteAppDataOnUninstall": false
+      "deleteAppDataOnUninstall": false,
+      "artifactName": "StackPad.v${version}.${ext}"
     },
     "linux": {
-      "target": "AppImage",
+      "target": [
+        "AppImage",
+        "deb"
+      ],
       "icon": "build/icon.png",
       "category": "Utility",
       "executableName": "stackpad",
-      "artifactName": "StackPad-${version}.${ext}"
+      "synopsis": "A lightweight notepad with vertical tabs",
+      "description": "StackPad is a lightweight plain-text notepad with a vertical tab rail, tab groups, window size presets, find and replace, and a light/dark theme. Every tab is kept between sessions.",
+      "maintainer": "Arafat Anam Chowdhury <arafatanam@users.noreply.github.com>",
+      "vendor": "Arafat Anam Chowdhury",
+      "mimeTypes": [
+        "text/plain"
+      ],
+      "desktop": {
+        "entry": {
+          "StartupWMClass": "StackPad",
+          "Keywords": "text;editor;notepad;notes;tabs;"
+        }
+      },
+      "artifactName": "StackPad.v${version}.${ext}"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "arafatanam",
+        "repo": "StackPad",
+        "releaseType": "release"
+      }
+    ],
+    "appx": {
+      "applicationId": "StackPad",
+      "identityName": "REPLACE.WITH.PARTNER.CENTER.IDENTITY.NAME",
+      "publisher": "CN=REPLACE-WITH-PARTNER-CENTER-PUBLISHER-ID",
+      "publisherDisplayName": "Arafat Anam Chowdhury",
+      "displayName": "StackPad",
+      "backgroundColor": "#1e3a8a",
+      "languages": [
+        "en-US"
+      ],
+      "artifactName": "StackPad.v${version}.${ext}",
+      "minVersion": "10.0.17763.0",
+      "maxVersionTested": "10.0.26100.0"
+    },
+    "deb": {
+      "artifactName": "StackPad.v${version}.${ext}"
     }
   }
 }

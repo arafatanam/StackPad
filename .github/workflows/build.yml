@@ -1,55 +1,204 @@
-# Builds the Windows and Linux installers on GitHub's machines. A Linux
-# AppImage can't be built on Windows, so this is how the Linux file is made.
+# Tests StackPad, then builds the Windows and Linux installers on GitHub's
+# machines. A Linux build can't be made on Windows, so this is how the Linux
+# files are made.
 #
-# Pushing a tag such as v2.2.0 also creates a draft release with both files.
-# Pushing a release/* branch only builds them, for downloading from the run.
+# - Pushing a tag such as v2.2.0 also creates a draft release with every file
+#   the website and the auto-updater need. Publish the draft to ship it.
+# - Pushing a release/* branch only builds, for downloading from the run.
+#
+# Optional, switched on by repository settings (see docs/SIGNING.md):
+# - Code signing through SignPath, when the SIGNPATH_API_TOKEN secret and the
+#   SIGNPATH_* variables are set.
+# - A Microsoft Store package, when the MS_STORE_* variables are set.
 name: Build installers
 
 on:
   push:
     tags: ["v*"]
     branches: ["release/**"]
+  pull_request:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  build:
+  test:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: windows-latest
-            target: --win
-            files: dist/*.exe
-          - os: ubuntu-latest
-            target: --linux
-            files: dist/*.AppImage
+        os: [windows-latest, ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx electron-builder ${{ matrix.target }} --publish never
+      - run: npm test
+
+  windows:
+    needs: test
+    if: github.event_name != 'pull_request'
+    runs-on: windows-latest
+    env:
+      SIGN: ${{ secrets.SIGNPATH_API_TOKEN != '' && vars.SIGNPATH_ORGANIZATION_ID != '' }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      # 1. Package the app folder (dist/win-unpacked) without an installer,
+      #    so StackPad.exe itself can be signed before it's wrapped up.
+      - run: npx electron-builder --win dir --publish never
+
+      - name: Upload StackPad.exe for signing
+        if: env.SIGN == 'true'
+        id: unsigned-app
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-app
+          path: dist/win-unpacked/StackPad.exe
+          if-no-files-found: error
+
+      - name: Sign StackPad.exe
+        if: env.SIGN == 'true'
+        uses: signpath/github-action-submit-signing-request@v1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          github-artifact-id: ${{ steps.unsigned-app.outputs.artifact-id }}
+          wait-for-completion: true
+          # Release signing waits for you to approve it on signpath.io.
+          wait-for-completion-timeout-in-seconds: 3600
+          output-artifact-directory: signed-app
+
+      - name: Use the signed StackPad.exe
+        if: env.SIGN == 'true'
+        run: cp signed-app/StackPad.exe dist/win-unpacked/StackPad.exe
+
+      # 2. Build the setup wizard around the (signed) app.
+      - run: npx electron-builder --win nsis --prepackaged dist/win-unpacked --publish never
+
+      - name: Upload installer for signing
+        if: env.SIGN == 'true'
+        id: unsigned-installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-installer
+          path: dist/StackPad.v*.exe
+          if-no-files-found: error
+
+      - name: Sign installer
+        if: env.SIGN == 'true'
+        uses: signpath/github-action-submit-signing-request@v1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          github-artifact-id: ${{ steps.unsigned-installer.outputs.artifact-id }}
+          wait-for-completion: true
+          # Release signing waits for you to approve it on signpath.io.
+          wait-for-completion-timeout-in-seconds: 3600
+          output-artifact-directory: signed-installer
+
+      - name: Use the signed installer and refresh update info
+        if: env.SIGN == 'true'
+        run: |
+          cp signed-installer/StackPad.v*.exe dist/
+          node scripts/refresh-update-info.js dist
+
       - uses: actions/upload-artifact@v4
         with:
-          name: installer-${{ matrix.os }}
-          path: ${{ matrix.files }}
+          name: release-windows
+          path: |
+            dist/StackPad.v*.exe
+            dist/StackPad.v*.exe.blockmap
+            dist/latest.yml
+          if-no-files-found: error
+
+  linux:
+    needs: test
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx electron-builder --linux AppImage deb --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-linux
+          path: |
+            dist/StackPad.v*.AppImage
+            dist/StackPad.v*.deb
+            dist/latest-linux.yml
+          if-no-files-found: error
+
+  store:
+    needs: test
+    if: github.event_name != 'pull_request' && vars.MS_STORE_IDENTITY_NAME != ''
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # The Store signs the package itself, so it's uploaded unsigned.
+      - run: >
+          npx electron-builder --win appx --publish never
+          "-c.appx.identityName=${{ vars.MS_STORE_IDENTITY_NAME }}"
+          "-c.appx.publisher=${{ vars.MS_STORE_PUBLISHER }}"
+          "-c.appx.publisherDisplayName=${{ vars.MS_STORE_PUBLISHER_DISPLAY_NAME }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: microsoft-store-package
+          path: dist/*.appx
           if-no-files-found: error
 
   draft-release:
     if: startsWith(github.ref, 'refs/tags/')
-    needs: build
+    needs: [windows, linux]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          path: installers
+          pattern: release-*
+          path: release
           merge-multiple: true
-      - run: gh release create "$GITHUB_REF_NAME" installers/* --draft --title "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY"
+      - name: Release notes from CHANGELOG.md
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v v="$version" '
+            $0 ~ "^## \\[?" v "\\]?" { found = 1; next }
+            found && /^## / { exit }
+            found { print }
+          ' CHANGELOG.md > notes.md
+          [ -s notes.md ] || echo "See CHANGELOG.md" > notes.md
+      - run: >
+          gh release create "$GITHUB_REF_NAME" release/*
+          --draft --title "StackPad $GITHUB_REF_NAME" --notes-file notes.md
+          --repo "$GITHUB_REPOSITORY"
         env:
           GH_TOKEN: ${{ github.token }}

@@ -1,0 +1,497 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>StackPad: the free notepad with vertical tabs for Windows and Linux</title>
+    <meta
+      name="description"
+      content="StackPad is a free, open-source notepad for Windows and Linux. Vertical tabs, tab groups, and every note kept between sessions, even the ones you never saved. No account, no telemetry."
+    />
+    <meta name="theme-color" content="#1e3a8a" />
+    <link rel="canonical" href="https://arafatanam.github.io/StackPad/" />
+    <link rel="icon" type="image/png" href="assets/favicon-64.png" />
+    <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="StackPad: the notepad with vertical tabs" />
+    <meta
+      property="og:description"
+      content="Free and open source for Windows and Linux. Vertical tabs, tab groups, and nothing ever lost. No account, no telemetry."
+    />
+    <meta property="og:url" content="https://arafatanam.github.io/StackPad/" />
+    <meta property="og:image" content="https://arafatanam.github.io/StackPad/assets/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "StackPad",
+        "operatingSystem": "Windows 10, Windows 11, Linux",
+        "applicationCategory": "UtilitiesApplication",
+        "softwareVersion": "2.2.0",
+        "license": "https://opensource.org/licenses/MIT",
+        "url": "https://arafatanam.github.io/StackPad/",
+        "downloadUrl": "https://github.com/arafatanam/StackPad/releases/latest",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+      }
+    </script>
+
+    <link rel="stylesheet" href="assets/site.css" />
+    <script src="assets/site.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="site-header">
+      <div class="wrap header-inner">
+        <a class="brand" href="./" aria-label="StackPad home">
+          <img src="assets/favicon-64.png" alt="" width="28" height="28" />
+          <span>StackPad</span>
+        </a>
+        <nav class="site-nav" aria-label="Main">
+          <a href="#features">Features</a>
+          <a href="#compare">Compare</a>
+          <a href="#shortcuts">Shortcuts</a>
+          <a href="#faq">FAQ</a>
+          <a href="https://github.com/arafatanam/StackPad">GitHub</a>
+        </nav>
+        <a class="btn btn-small" href="#download">Download</a>
+      </div>
+    </header>
+
+    <main id="main">
+      <!-- ================= HERO ================= -->
+      <section class="hero">
+        <div class="wrap hero-grid">
+          <div class="hero-copy">
+            <p class="eyebrow">Free notepad for Windows &amp; Linux</p>
+            <h1>The notepad that keeps every tab in&nbsp;view.</h1>
+            <p class="lede">
+              StackPad stacks your tabs in a slim rail down the side, sorts them into groups, and
+              remembers every one, even the ones you never saved. Close it mid-sentence and pick up
+              exactly where you left off.
+            </p>
+
+            <div class="cta" data-download-block>
+              <a class="btn btn-primary btn-large" data-primary-download href="#download">
+                <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3v12m0 0-5-5m5 5 5-5M5 21h14" /></svg>
+                <span data-primary-label>Download StackPad</span>
+              </a>
+              <p class="cta-meta" data-primary-meta>Version 2.2.0 · Windows 10 &amp; 11 · Linux</p>
+              <p class="cta-alt"><a href="#download" data-other-link>Other downloads</a></p>
+            </div>
+
+            <ul class="promises" aria-label="What you get">
+              <li><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="m5 12 5 5 9-10" /></svg>Free, no trial, no ads</li>
+              <li><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="m5 12 5 5 9-10" /></svg>No account or sign-in</li>
+              <li><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="m5 12 5 5 9-10" /></svg>Nothing leaves your computer</li>
+            </ul>
+          </div>
+
+          <figure class="hero-shot">
+            <picture>
+              <source srcset="assets/screenshot-dark-rail.webp" media="(prefers-color-scheme: dark)" type="image/webp" />
+              <source srcset="assets/screenshot-light-rail.webp" type="image/webp" />
+              <img
+                src="assets/screenshot-light.png"
+                width="1405"
+                height="905"
+                alt="StackPad with its tab rail open, showing tabs sorted into Work and Home groups beside a meeting note."
+                fetchpriority="high"
+              />
+            </picture>
+          </figure>
+        </div>
+      </section>
+
+      <!-- ================= THE PROBLEM ================= -->
+      <section class="section" id="tabs" aria-labelledby="tabs-title">
+        <div class="wrap">
+          <div class="section-head">
+            <p class="eyebrow">Why vertical tabs</p>
+            <h2 id="tabs-title">Eight tabs in. Which one was the meeting notes?</h2>
+            <p>
+              A tab strip across the top squeezes every title until they're unreadable. A rail
+              down the side has room for all of them, and it stays out of your way while you write.
+            </p>
+          </div>
+
+          <div class="compare-demo">
+            <figure class="demo demo-strip" aria-labelledby="strip-cap">
+              <div class="demo-window" aria-hidden="true">
+                <div class="strip">
+                  <span>Untitle…</span><span>Meeti…</span><span>Proje…</span><span>Relea…</span
+                  ><span>Groce…</span><span>Recip…</span><span>Journ…</span><span>Snipp…</span>
+                </div>
+                <div class="demo-lines"><i></i><i></i><i></i><i></i></div>
+              </div>
+              <figcaption id="strip-cap"><strong>Horizontal tabs</strong> run out of room and cut every title short.</figcaption>
+            </figure>
+
+            <figure class="demo demo-rail" aria-labelledby="rail-cap">
+              <div class="demo-window" data-rail-demo>
+                <div class="rail" id="demo-rail">
+                  <span class="rail-group">Work</span>
+                  <span class="rail-tab is-active"><b style="--c: #3b5bdb">MN</b><em>Meeting Notes</em></span>
+                  <span class="rail-tab"><b style="--c: #c2410c">PI</b><em>Project Ideas</em></span>
+                  <span class="rail-tab"><b style="--c: #a61e4d">RC</b><em>Release Checklist</em></span>
+                  <span class="rail-group">Home</span>
+                  <span class="rail-tab"><b style="--c: #0b7285">GL</b><em>Grocery List</em></span>
+                  <span class="rail-tab"><b style="--c: #2b8a3e">RE</b><em>Recipes</em></span>
+                  <span class="rail-tab"><b style="--c: #c92a2a">JO</b><em>Journal</em></span>
+                </div>
+                <div class="demo-lines" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+              </div>
+              <figcaption id="rail-cap">
+                <strong>StackPad's rail</strong> shows a coloured initials badge for each tab, and
+                opens over the editor to show full titles.
+                <button type="button" class="link-button" data-rail-toggle aria-controls="demo-rail" aria-expanded="false">
+                  Open the rail
+                </button>
+              </figcaption>
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= NEVER LOSE A NOTE ================= -->
+      <section class="section section-tint" aria-labelledby="safe-title">
+        <div class="wrap split">
+          <div class="section-head">
+            <p class="eyebrow">Never lose a note</p>
+            <h2 id="safe-title">Close it mid-sentence. It'll still be there.</h2>
+            <p>
+              Most notepads only keep what you saved. StackPad keeps everything, as you type, so
+              you never have to think about it.
+            </p>
+          </div>
+          <ul class="checklist">
+            <li>
+              <h3>Every tab comes back</h3>
+              <p>Quit, restart or update, and every tab returns with its text, even tabs you never saved to a file.</p>
+            </li>
+            <li>
+              <h3>Saved as you type</h3>
+              <p>Even the last keystrokes before you close the window are written to disk.</p>
+            </li>
+            <li>
+              <h3>Crash-proof saving</h3>
+              <p>Files are written in full before they replace the old version, so a crash or power cut can't leave a half-saved document.</p>
+            </li>
+            <li>
+              <h3>Edited somewhere else? You'll know.</h3>
+              <p>If another program changes a file you have open, StackPad reloads it, or asks before replacing your unsaved changes.</p>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ================= FEATURES ================= -->
+      <section class="section" id="features" aria-labelledby="features-title">
+        <div class="wrap">
+          <div class="section-head">
+            <p class="eyebrow">Features</p>
+            <h2 id="features-title">Everything a notepad needs. Nothing it doesn't.</h2>
+          </div>
+
+          <ul class="features">
+            <li>
+              <svg class="icon icon-feature" aria-hidden="true" viewBox="0 0 24 24"><path d="M3 7h6l2 2h10v10H3zM3 7V5h6" /></svg>
+              <h3>Tab groups</h3>
+              <p>Name a group, drag tabs into it, fold it away. Drag groups to reorder them.</p>
+            </li>
+            <li>
+              <svg class="icon icon-feature" aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M3 9h18" /></svg>
+              <h3>One-click window sizes</h3>
+              <p>Snap to a 4:5 or 16:9 window, or go Freeform and StackPad remembers your size and position.</p>
+            </li>
+            <li>
+              <svg class="icon icon-feature" aria-hidden="true" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6" /><path d="m20 20-4.5-4.5" /></svg>
+              <h3>Find &amp; replace that keeps up</h3>
+              <p>Live "3 of 12" count, match case, whole word, and Replace All you can undo.</p>
+            </li>
+            <li>
+              <svg class="icon icon-feature" aria-hidden="true" viewBox="0 0 24 24"><path d="M4 7h16M4 12h10M4 17h13" /></svg>
+              <h3>Your files stay as they were</h3>
+              <p>Line endings (CRLF or LF) and encodings (UTF-8, UTF-16, ANSI) are kept exactly when you save.</p>
+            </li>
+            <li>
+              <svg class="icon icon-feature" aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z" /></svg>
+              <h3>Light and dark</h3>
+              <p>Follows your system theme, or pick one. Opens straight into it, with no white flash.</p>
+            </li>
+            <li>
+              <svg class="icon icon-feature" aria-hidden="true" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v5h-5" /></svg>
+              <h3>Updates itself</h3>
+              <p>New versions download quietly and install when you close StackPad. You can turn this off.</p>
+            </li>
+          </ul>
+
+          <figure class="wide-shot">
+            <picture>
+              <source srcset="assets/screenshot-dark.webp" media="(prefers-color-scheme: dark)" type="image/webp" />
+              <source srcset="assets/screenshot-light.webp" type="image/webp" />
+              <img
+                src="assets/screenshot-light.png"
+                width="1405"
+                height="905"
+                loading="lazy"
+                alt="StackPad with the tab rail collapsed to coloured initials badges, a meeting note open, and a status bar showing line, column, word count, line endings and encoding."
+              />
+            </picture>
+            <figcaption>The rail collapses to colour-coded badges while you write. The status bar shows your position, word count, line endings and encoding.</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <!-- ================= COMPARE ================= -->
+      <section class="section section-tint" id="compare" aria-labelledby="compare-title">
+        <div class="wrap">
+          <div class="section-head">
+            <p class="eyebrow">StackPad vs. Windows Notepad</p>
+            <h2 id="compare-title">Same simplicity, fewer frustrations.</h2>
+            <p>Both are plain-text editors with tabs, find and replace, themes and session restore. Here's where StackPad is different.</p>
+          </div>
+
+          <div class="table-scroll" role="region" aria-labelledby="compare-title" tabindex="0">
+            <table class="compare-table">
+              <thead>
+                <tr>
+                  <th scope="col"><span class="visually-hidden">Area</span></th>
+                  <th scope="col">Windows Notepad</th>
+                  <th scope="col" class="col-us">StackPad</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th scope="row">Tab layout</th>
+                  <td data-label="Windows Notepad">Horizontal strip across the top</td>
+                  <td class="col-us" data-label="StackPad">Vertical rail that opens over the editor, so your text never shifts</td>
+                </tr>
+                <tr>
+                  <th scope="row">Organising tabs</th>
+                  <td data-label="Windows Notepad">One flat row</td>
+                  <td class="col-us" data-label="StackPad">Named groups you can fold away, plus a colour badge for every tab</td>
+                </tr>
+                <tr>
+                  <th scope="row">Window size</th>
+                  <td data-label="Windows Notepad">Resize by hand</td>
+                  <td class="col-us" data-label="StackPad">One-click 4:5 and 16:9 presets, or Freeform</td>
+                </tr>
+                <tr>
+                  <th scope="row">Status bar</th>
+                  <td data-label="Windows Notepad">Position, characters, zoom, line endings, encoding</td>
+                  <td class="col-us" data-label="StackPad">The same, plus a live word count</td>
+                </tr>
+                <tr>
+                  <th scope="row">Online features</th>
+                  <td data-label="Windows Notepad">Microsoft account and AI features</td>
+                  <td class="col-us" data-label="StackPad">None: no account, no AI, no telemetry</td>
+                </tr>
+                <tr>
+                  <th scope="row">Runs on</th>
+                  <td data-label="Windows Notepad">Windows</td>
+                  <td class="col-us" data-label="StackPad">Windows and Linux</td>
+                </tr>
+                <tr>
+                  <th scope="row">Source code</th>
+                  <td data-label="Windows Notepad">Closed</td>
+                  <td class="col-us" data-label="StackPad">Open source (MIT): read it, change it, build it yourself</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= PRIVACY ================= -->
+      <section class="section privacy-band" aria-labelledby="privacy-title">
+        <div class="wrap privacy-inner">
+          <svg class="icon privacy-icon" aria-hidden="true" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
+          <div>
+            <h2 id="privacy-title">Your notes are yours. Full stop.</h2>
+            <p>
+              StackPad has no accounts, no analytics and no AI. It never uploads your notes. Its only
+              connection to the internet is an update check, which you can switch off. Don't take our word
+              for it: <a href="https://github.com/arafatanam/StackPad">the source code is public</a>.
+            </p>
+            <p><a href="privacy.html">Read the privacy policy</a></p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= SHORTCUTS ================= -->
+      <section class="section" id="shortcuts" aria-labelledby="shortcuts-title">
+        <div class="wrap">
+          <div class="section-head">
+            <p class="eyebrow">Keyboard shortcuts</p>
+            <h2 id="shortcuts-title">Keep your hands on the keys.</h2>
+            <p>The Notepad shortcuts you already know, plus a few new ones. On Linux they're the same.</p>
+          </div>
+
+          <div class="shortcut-columns">
+            <dl class="shortcuts">
+              <div><dt>New tab</dt><dd><kbd>Ctrl</kbd><kbd>N</kbd></dd></div>
+              <div><dt>New group</dt><dd><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>N</kbd></dd></div>
+              <div><dt>Open</dt><dd><kbd>Ctrl</kbd><kbd>O</kbd></dd></div>
+              <div><dt>Save / Save As</dt><dd><kbd>Ctrl</kbd><kbd>S</kbd> / <kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>S</kbd></dd></div>
+              <div><dt>Print</dt><dd><kbd>Ctrl</kbd><kbd>P</kbd></dd></div>
+              <div><dt>Close tab</dt><dd><kbd>Ctrl</kbd><kbd>W</kbd></dd></div>
+              <div><dt>Next / previous tab</dt><dd><kbd>Ctrl</kbd><kbd>Tab</kbd> / <kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>Tab</kbd></dd></div>
+              <div><dt>Undo / Redo</dt><dd><kbd>Ctrl</kbd><kbd>Z</kbd> / <kbd>Ctrl</kbd><kbd>Y</kbd></dd></div>
+            </dl>
+            <dl class="shortcuts">
+              <div><dt>Find</dt><dd><kbd>Ctrl</kbd><kbd>F</kbd></dd></div>
+              <div><dt>Find next / previous</dt><dd><kbd>F3</kbd> / <kbd>Shift</kbd><kbd>F3</kbd></dd></div>
+              <div><dt>Replace</dt><dd><kbd>Ctrl</kbd><kbd>H</kbd></dd></div>
+              <div><dt>Replace current / all</dt><dd><kbd>Enter</kbd> / <kbd>Ctrl</kbd><kbd>Enter</kbd></dd></div>
+              <div><dt>Go to line</dt><dd><kbd>Ctrl</kbd><kbd>G</kbd></dd></div>
+              <div><dt>Insert time and date</dt><dd><kbd>F5</kbd></dd></div>
+              <div><dt>Zoom in / out / reset</dt><dd><kbd>Ctrl</kbd><kbd>+</kbd> / <kbd>Ctrl</kbd><kbd>−</kbd> / <kbd>Ctrl</kbd><kbd>0</kbd></dd></div>
+              <div><dt>Close find or replace</dt><dd><kbd>Esc</kbd></dd></div>
+            </dl>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= DOWNLOAD ================= -->
+      <section class="section section-tint" id="download" aria-labelledby="download-title">
+        <div class="wrap">
+          <div class="section-head">
+            <p class="eyebrow">Download</p>
+            <h2 id="download-title">Get StackPad <span data-version>2.2.0</span></h2>
+            <p>Free, about a minute to install, and it updates itself from then on.</p>
+          </div>
+
+          <div class="downloads">
+            <article class="download-card" data-platform="windows">
+              <svg class="icon platform-icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M3 5.5 10.5 4.5v7H3zM12 4.3 21 3v8.5h-9zM3 12.5h7.5v7L3 18.5zM12 12.5h9V21l-9-1.3z" /></svg>
+              <h3>Windows</h3>
+              <p class="download-sub">Windows 10 and 11, 64-bit</p>
+              <a class="btn btn-primary" data-asset="exe" href="https://github.com/arafatanam/StackPad/releases/latest">
+                Download installer
+              </a>
+              <p class="download-meta" data-meta="exe">StackPad.v2.2.0.exe</p>
+              <a class="store-badge" data-store-link href="#" hidden>Get it from Microsoft Store</a>
+            </article>
+
+            <article class="download-card" data-platform="linux">
+              <svg class="icon platform-icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M4 6h16v12H4zM7 10l3 2-3 2M12 15h5" /></svg>
+              <h3>Linux</h3>
+              <p class="download-sub">64-bit, most distributions</p>
+              <a class="btn btn-primary" data-asset="appimage" href="https://github.com/arafatanam/StackPad/releases/latest">
+                Download AppImage
+              </a>
+              <p class="download-meta" data-meta="appimage">Runs anywhere, updates itself</p>
+              <a class="btn btn-quiet" data-asset="deb" href="https://github.com/arafatanam/StackPad/releases/latest">
+                Download .deb
+              </a>
+              <p class="download-meta" data-meta="deb">For Ubuntu, Debian, Mint and similar</p>
+            </article>
+          </div>
+
+          <div class="next-steps" data-next-steps hidden tabindex="-1" aria-live="polite">
+            <h3>Your download has started. Next:</h3>
+            <ol data-steps-windows hidden>
+              <li>Open <strong>StackPad.v<span data-version>2.2.0</span>.exe</strong> from your Downloads folder.</li>
+              <li data-smartscreen>
+                If Windows shows <em>"Windows protected your PC"</em>, choose <strong>More info → Run anyway</strong>.
+                StackPad isn't code-signed yet, so Windows doesn't recognise it. The installer is built
+                in public by <a href="https://github.com/arafatanam/StackPad/actions">GitHub Actions</a> from the open source code.
+              </li>
+              <li>Follow the setup wizard. StackPad opens when it's done, and it's in your Start menu.</li>
+            </ol>
+            <ol data-steps-appimage hidden>
+              <li>Make it executable: right-click → <strong>Properties → Allow executing as a program</strong>, or run <code>chmod +x StackPad.v<span data-version>2.2.0</span>.AppImage</code>.</li>
+              <li>Double-click it to run. If it doesn't start, install FUSE: <code>sudo apt install libfuse2</code>.</li>
+            </ol>
+            <ol data-steps-deb hidden>
+              <li>Install it: <code>sudo apt install ./StackPad.v<span data-version>2.2.0</span>.deb</code>, or open it with your software centre.</li>
+              <li>Find StackPad in your app menu. When a new version comes out, StackPad tells you and links to the download.</li>
+            </ol>
+          </div>
+
+          <p class="download-footnote">
+            Prefer to build it yourself? <a href="https://github.com/arafatanam/StackPad#building-from-source">Build from source</a>.
+            Looking for an older version? See <a href="https://github.com/arafatanam/StackPad/releases">all releases</a>
+            and the <a href="https://github.com/arafatanam/StackPad/blob/main/CHANGELOG.md">release notes</a>.
+          </p>
+        </div>
+      </section>
+
+      <!-- ================= FAQ ================= -->
+      <section class="section" id="faq" aria-labelledby="faq-title">
+        <div class="wrap faq-wrap">
+          <div class="section-head">
+            <p class="eyebrow">FAQ</p>
+            <h2 id="faq-title">Questions, answered.</h2>
+          </div>
+
+          <div class="faq">
+            <details>
+              <summary>Is StackPad really free?</summary>
+              <p>Yes. No trial, no "pro" version, no ads and no data collection. It's open source under the MIT license, so it will stay free.</p>
+            </details>
+            <details>
+              <summary>Will it replace Windows Notepad?</summary>
+              <p>Only if you want it to. StackPad installs alongside Notepad and adds itself to <strong>Open with</strong> for <code>.txt</code> files. To make it the default, right-click a <code>.txt</code> file → <strong>Open with → Choose another app</strong>, pick StackPad and tick <strong>Always</strong>.</p>
+            </details>
+            <details>
+              <summary>Where are my notes stored?</summary>
+              <p>On your computer only: <code>%APPDATA%\stackpad</code> on Windows and <code>~/.config/stackpad</code> on Linux. Files you save with Save As live wherever you put them. Uninstalling StackPad keeps your notes unless you delete that folder.</p>
+            </details>
+            <details data-smartscreen>
+              <summary>Why does Windows warn me when I install it?</summary>
+              <p>Windows SmartScreen warns about any installer that isn't code-signed with a paid certificate, which most small open-source projects don't have yet. Choose <strong>More info → Run anyway</strong>. Every installer is built in public from the source code by GitHub Actions, so you can check exactly what went into it.</p>
+            </details>
+            <details>
+              <summary>How do updates work?</summary>
+              <p>StackPad checks GitHub for a new version in the background. On Windows and the Linux AppImage, it downloads the update and installs it the next time you close the app, or straight away if you choose "Restart now". The .deb version tells you when an update is out. You can turn checking off under <strong>Help → Check for Updates Automatically</strong>.</p>
+            </details>
+            <details>
+              <summary>Is there a Mac version?</summary>
+              <p>Not as a download. StackPad can run on macOS from the source code, but Windows and Linux are the supported platforms.</p>
+            </details>
+            <details>
+              <summary>Can it open large files or code?</summary>
+              <p>StackPad is a plain-text notepad. It opens any text file up to 50 MB, but it doesn't do syntax highlighting. For programming, a code editor is the better tool.</p>
+            </details>
+            <details>
+              <summary>I found a bug or have an idea. Where do I go?</summary>
+              <p>In StackPad, choose <strong>Help → Report a Problem</strong>: it fills in your version for you. Or open an issue on <a href="https://github.com/arafatanam/StackPad/issues">GitHub</a>.</p>
+            </details>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= FINAL CTA ================= -->
+      <section class="final-cta">
+        <div class="wrap final-inner">
+          <img src="assets/icon-256.png" alt="" width="88" height="88" loading="lazy" />
+          <h2>Give your notes some room.</h2>
+          <p>Free for Windows and Linux. Set up in about a minute.</p>
+          <a class="btn btn-primary btn-large" data-primary-download href="#download">
+            <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3v12m0 0-5-5m5 5 5-5M5 21h14" /></svg>
+            <span data-primary-label>Download StackPad</span>
+          </a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="wrap footer-inner">
+        <p>© <span data-year>2026</span> Arafat Anam Chowdhury · StackPad is open source under the <a href="https://github.com/arafatanam/StackPad/blob/main/LICENSE">MIT License</a>.</p>
+        <nav aria-label="Footer">
+          <a href="https://github.com/arafatanam/StackPad">Source code</a>
+          <a href="https://github.com/arafatanam/StackPad/blob/main/CHANGELOG.md">Release notes</a>
+          <a href="https://github.com/arafatanam/StackPad/issues/new/choose">Report a problem</a>
+          <a href="privacy.html">Privacy</a>
+        </nav>
+      </div>
+    </footer>
+  </body>
+</html>

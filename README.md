@@ -5,7 +5,18 @@
 <h1 align="center">StackPad</h1>
 
 <p align="center">
-  A lightweight Windows notepad with vertical tabs, window size presets and a calm light/dark design.
+  A lightweight notepad for Windows and Linux with vertical tabs, tab groups, window size presets and a calm light/dark design.
+</p>
+
+<p align="center">
+  <a href="https://arafatanam.github.io/StackPad/"><strong>Website &amp; download</strong></a> ·
+  <a href="CHANGELOG.md">Release notes</a> ·
+  <a href="PRIVACY.md">Privacy</a> ·
+  <a href="https://github.com/arafatanam/StackPad/issues/new/choose">Report a problem</a>
+</p>
+
+<p align="center">
+  <img src="website/assets/screenshot-light-rail.webp" alt="StackPad with the tab rail open, showing tabs in Work and Home groups" width="760" />
 </p>
 
 ---
@@ -30,7 +41,7 @@ Both apps are plain-text editors with tabs, find and replace, themes and session
 | **Window size**        | Resize by hand                                     | One-click **4:5** and **16:9** presets, plus **Freeform**, which remembers your size and position                                                                    |
 | **Find & replace**     | Find and replace panel                             | Compact controls that take the title's place in the toolbar, with a live "3 of 12" count, match case, whole word and an in-text highlight that follows wrapped lines |
 | **Status bar**         | Position, characters, zoom, line endings, encoding | Also shows a live **word count**                                                                                                                                     |
-| **Online features**    | Includes features linked to a Microsoft account    | Fully offline: no account, no sign-in, no AI features, no telemetry                                                                                                  |
+| **Online features**    | Includes features linked to a Microsoft account    | No account, no sign-in, no AI features, no telemetry. The only connection is an update check, which you can turn off                                                 |
 | **Source**             | Closed source                                      | Open source (MIT), so you can change anything                                                                                                                        |
 
 ## Features
@@ -51,7 +62,8 @@ Both apps are plain-text editors with tabs, find and replace, themes and session
 - Typing is saved continuously, and the last keystrokes are saved even if you close the app immediately
 - Unsaved changes are marked with a notch on the tab's left edge when the rail is open, and a dot next to the title above the editor
 - Closing a tab with unsaved changes asks **Save / Don't Save / Cancel**
-- App data is written safely, so a crash or power cut can't leave it half-written
+- App data and your own files are written safely: the new version is saved in full before it replaces the old one, so a crash or power cut can't leave anything half-written
+- If another program changes a file you have open, StackPad reloads it, or asks first if you have unsaved changes
 
 ### Writing and editing
 
@@ -76,6 +88,7 @@ Both apps are plain-text editors with tabs, find and replace, themes and session
 - Opening a file that's already open switches to its tab instead of duplicating it
 - Files are saved back with their original **line endings** (Windows CRLF or Unix LF) and **encoding** (UTF-8, UTF-8 with BOM, UTF-16, ANSI). If you add characters ANSI can't store, the file is saved as UTF-8 instead of losing them
 - Print outputs the whole note on its own, without the app interface
+- Read-only files are never overwritten; symbolic links, hard links and Linux file permissions are kept when saving
 
 ### Look and feel
 
@@ -83,6 +96,11 @@ Both apps are plain-text editors with tabs, find and replace, themes and session
 - Status bar with line/column, words, characters, zoom, line endings and encoding (can be hidden)
 - Subtle motion for menus, dialogs, tabs and the find bar; turned off automatically when Windows **Animation effects** is off
 - The window opens at your saved size and theme without a white flash
+
+### Updates and help
+
+- StackPad updates itself: new versions download in the background and install when you close the app (Windows installer and Linux AppImage). The .deb version tells you when an update is out
+- **Help** menu with the website, keyboard shortcuts, release notes, **Report a Problem** (with your version filled in), **Check for Updates** and **About StackPad**
 
 ## Keyboard shortcuts
 
@@ -107,57 +125,68 @@ Both apps are plain-text editors with tabs, find and replace, themes and session
 
 ## Installing StackPad
 
-1. Download `StackPad v2.1.0.exe` from the project's **Releases** page.
-2. Run it. The setup wizard walks you through:
+Download the latest version from the **[StackPad website](https://arafatanam.github.io/StackPad/#download)** or the [Releases page](https://github.com/arafatanam/StackPad/releases/latest).
+
+### Windows
+
+1. Download `StackPad.v2.2.0.exe` and run it. The setup wizard walks you through:
    - the license agreement,
    - installing **for just you** or **for everyone on this PC**,
    - choosing the install folder,
-   - a progress bar while files are copied,
    - a final page with **Run StackPad** ticked.
-3. StackPad is added to the Start menu and the desktop, and appears under **Open with** for `.txt` files.
+2. StackPad is added to the Start menu and the desktop, and appears under **Open with** for `.txt` files.
 
 To uninstall, use **Settings → Apps → Installed apps → StackPad → Uninstall**. Your notes are kept unless you delete them yourself (see below).
 
-> Windows SmartScreen may warn about an unrecognised app because the installer isn't code-signed. Choose **More info → Run anyway** to continue.
+> Until the installer is code-signed, Windows SmartScreen may warn about an unrecognised app. Choose **More info → Run anyway** to continue. See [docs/SIGNING.md](docs/SIGNING.md) for the signing plan.
 
 ### Linux
 
-Download `StackPad-2.1.0.AppImage` from the **Releases** page, then make it executable and run it:
+**AppImage** (any distribution, updates itself):
 
 ```bash
-chmod +x StackPad-2.1.0.AppImage
-./StackPad-2.1.0.AppImage
+chmod +x StackPad.v2.2.0.AppImage
+./StackPad.v2.2.0.AppImage
 ```
 
 AppImages need FUSE. If it won't start, install it first (`sudo apt install libfuse2` on Ubuntu and Debian).
 
+**.deb** (Ubuntu, Debian, Mint and similar):
+
+```bash
+sudo apt install ./StackPad.v2.2.0.deb
+```
+
+### Updating from 2.1.0
+
+Version 2.1.0 can't update itself, so install 2.2.0 once over it. Your notes are kept. From then on, updates arrive automatically.
+
 ## Building from source
 
-Requirements: Windows 10 or 11, [Node.js](https://nodejs.org/) 18 or newer, and npm.
+Requirements: Windows 10/11 or Linux, [Node.js](https://nodejs.org/) 20 or newer, and npm.
 
 ```bash
 npm install     # install dependencies
 npm start       # run StackPad in development mode
-npm run dist    # build the installer
+npm test        # run the automated tests
+npm run dist    # build the installer for your system
 ```
 
-`npm run dist` creates `dist/StackPad v<version>.exe`, the setup wizard described above. The first build may need **Developer Mode** turned on (Settings → System → For developers) or an Administrator terminal, because electron-builder creates symbolic links while preparing its tools.
+On Windows, `npm run dist` creates `dist/StackPad.v<version>.exe`, the setup wizard described above. The first build may need **Developer Mode** turned on (Settings → System → For developers) or an Administrator terminal, because electron-builder creates symbolic links while preparing its tools. If the build stops with `status code 504`, GitHub's download servers failed while fetching those tools; run it again.
 
-If the build stops with `status code 504`, GitHub's download servers failed while fetching electron-builder's tools. Run it again; once they are downloaded they are cached.
-
-The Linux AppImage can't be built on Windows, so GitHub Actions builds it (see `.github/workflows/build.yml`). Pushing a version tag such as `v2.2.0` builds both installers and creates a draft release with them attached.
+Linux files can't be built on Windows, so GitHub Actions builds them (see [.github/workflows/build.yml](.github/workflows/build.yml)). Pushing a version tag such as `v2.3.0` tests and builds everything and creates a draft release with the installers and the update files attached. The full release steps are in [CONTRIBUTING.md](CONTRIBUTING.md#making-a-release-maintainers).
 
 macOS isn't a release target, though StackPad can be run from source there with `npm start`.
 
 ## Where your notes are stored
 
-StackPad keeps its data in `%APPDATA%\stackpad`:
+StackPad keeps its data in `%APPDATA%\stackpad` on Windows and `~/.config/stackpad` on Linux:
 
 | File               | Contents                                                                  |
 | ------------------ | ------------------------------------------------------------------------- |
 | `drafts\*.txt`     | The text of every open tab                                                |
 | `notes-index.json` | Tab order, titles, badge colours, each tab's group and linked file paths  |
-| `settings.json`    | Theme, font, zoom, word wrap, status bar, screen size, window position and tab groups |
+| `settings.json`    | Theme, font, zoom, word wrap, status bar, screen size, window position, tab groups and the automatic update setting |
 
 Files you save with **Save / Save As** live wherever you put them. The drafts are StackPad's own copy, so tabs you never saved to a file are still there next time.
 
@@ -165,77 +194,34 @@ Files you save with **Save / Save As** live wherever you put them. The drafts ar
 
 ```text
 stackpad/
-├── .github/workflows/
-│   └── build.yml             # builds the Windows and Linux installers on GitHub
-├── build/
-│   ├── icon.ico              # app and installer icon
-│   ├── icon.png              # app icon (macOS/Linux, README)
-│   └── installerSidebar.bmp  # image on the setup wizard's welcome and finish pages
+├── .github/
+│   ├── workflows/build.yml   # tests, builds and (optionally) signs the installers
+│   ├── workflows/pages.yml   # publishes the website
+│   └── ISSUE_TEMPLATE/       # bug report and feature request forms
+├── build/                    # app icons, installer artwork and Microsoft Store tiles
+├── docs/SIGNING.md           # code signing and Microsoft Store guide
+├── lib/
+│   ├── textfile.js           # encodings, line endings and crash-safe saving
+│   └── updater.js            # automatic updates
+├── scripts/                  # release helpers used by CI
 ├── src/
 │   ├── index.html            # window layout, menus and dialogs
 │   ├── renderer.js           # tabs, editor, find/replace, saving, settings
 │   └── styles.css            # themes, layout and motion
+├── test/                     # automated tests (npm test)
+├── website/                  # the project website (GitHub Pages)
 ├── main.js                   # window, native menu, file reading/writing, storage
 ├── preload.js                # the safe bridge between the window and main.js
-├── package.json              # scripts and installer configuration
-└── LICENSE
+└── package.json              # scripts and installer configuration
 ```
 
 ## Release notes
 
-### 2.1.0
+See [CHANGELOG.md](CHANGELOG.md).
 
-Tab groups, and more room for your tab titles.
+## Contributing
 
-**New**
-
-- Tab groups: named sections in the rail that fold away and are remembered between sessions
-- Drag tabs into, out of and around groups, and drag a group's header to reorder the groups
-- **New Group** in the File menu and on the rail, with the `Ctrl+Shift+N` shortcut
-- A Linux build, as an AppImage
-
-**Improved**
-
-- Tab titles have much more room: the open rail no longer shows the initials badge or a rename button (double-click a tab to rename it)
-- Unsaved tabs are marked with a notch on their left edge in the open rail instead of a dot that took up space
-- The collapsed rail shows only the initials badges, without the notch
-- The rail scrolls when you drag a tab or group near its top or bottom edge, and stays where you left it after you drop
-
-### 2.0.0
-
-The biggest update yet: a redesigned tab rail, a much more reliable save system, a reworked find and replace, and a proper Windows installer.
-
-**New**
-
-- Initials badges with a colour that stays with each tab, replacing the tab numbers
-- Unsaved-change dots, and **Save / Don't Save / Cancel** when closing an unsaved tab
-- **Match case** and **Match whole word** in find and replace
-- Word count, line-ending and encoding indicators in the status bar
-- Drag files onto the window to open them, and **Open with StackPad** from Explorer
-- Original line endings and encodings are kept when saving
-- Settings, the screen-size preset and the Freeform window position are remembered
-- Setup wizard with install location, per-user or all-users install, shortcuts and an uninstaller
-- New logo, and a blue accent shared by the light and dark themes
-- Light motion throughout the interface
-
-**Improved**
-
-- Find and replace: search follows the cursor, previous/next/replace stay in step, the highlight stays aligned after scrolling, resizing or zooming, and every replacement can be undone
-- The tab rail slides over the editor instead of re-wrapping your text
-- Printing outputs the full note rather than just the visible part of the window
-- The window opens at the right size and theme without flashing
-- The app works fully offline (the online font dependency was removed)
-
-**Fixed**
-
-- Dropping a file onto the window no longer replaces the app with that file
-- The last few keystrokes are no longer lost when closing quickly
-- Saved tabs no longer ask to be saved again when closed
-- Undo now works after Replace, Replace All, Time/Date and Tab
-- Double-clicking a tab to rename it works reliably
-- Edit menu commands (including Paste) now run reliably from the in-app menu
-- Open and save errors (e.g. a read-only file) are now reported instead of failing silently
-- The column number in the status bar is correct at the start of a note
+Bug reports, ideas and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md). Please report security problems privately, as described in [SECURITY.md](SECURITY.md).
 
 ## License
 

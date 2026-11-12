@@ -63,12 +63,26 @@
           <button data-action="theme-system">Use System Settings <span class="menu-check">✓</span></button>
         </div>
       </div>
-      <div class="app-menu">
+      <div class="app-menu app-menu-narrow">
         <button class="app-menu-trigger" type="button" aria-expanded="false">Screen</button>
         <div class="app-menu-popup">
           <button data-ratio="4:5">4:5 <span class="menu-check">✓</span></button>
           <button data-ratio="16:9">16:9 <span class="menu-check"></span></button>
           <button data-ratio="freeform">Freeform <span class="menu-check"></span></button>
+        </div>
+      </div>
+      <div class="app-menu">
+        <button class="app-menu-trigger" type="button" aria-expanded="false">Help</button>
+        <div class="app-menu-popup">
+          <button data-link="website">StackPad Website</button>
+          <button data-link="shortcuts">Keyboard Shortcuts</button>
+          <button data-link="changelog">Release Notes</button>
+          <button data-link="report-issue">Report a Problem...</button>
+          <hr />
+          <button data-action="check-updates">Check for Updates...</button>
+          <button data-action="auto-update">Check for Updates Automatically <span class="menu-check">✓</span></button>
+          <hr />
+          <button data-action="about">About StackPad</button>
         </div>
       </div>
     </nav>
@@ -238,6 +252,36 @@
         <div id="confirm-actions" class="dialog-actions"></div>
       </form>
     </dialog>
+
+    <dialog id="about-dialog" aria-labelledby="about-name">
+      <form method="dialog" class="about-form">
+        <img id="about-icon" class="about-icon" alt="" width="72" height="72" hidden />
+        <h2 id="about-name" class="about-name">StackPad</h2>
+        <p id="about-version" class="about-version"></p>
+        <p class="about-tagline">A lightweight notepad with vertical tabs. Free, open source and fully offline.</p>
+        <p class="about-links">
+          <button type="button" class="link-btn" data-link="website">Website</button>
+          <span aria-hidden="true">·</span>
+          <button type="button" class="link-btn" data-link="changelog">Release notes</button>
+          <span aria-hidden="true">·</span>
+          <button type="button" class="link-btn" data-link="source">Source code</button>
+          <span aria-hidden="true">·</span>
+          <button type="button" class="link-btn" data-link="privacy">Privacy</button>
+        </p>
+        <p id="about-details" class="about-details"></p>
+        <p id="about-copyright" class="about-details"></p>
+        <div class="dialog-actions">
+          <button id="about-copy-btn" type="button">Copy details</button>
+          <button type="submit" class="primary-btn">OK</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div id="update-notice" class="update-notice" role="status" aria-live="polite" hidden>
+      <span id="update-notice-text"></span>
+      <button id="update-restart-btn" type="button" class="primary-btn">Restart now</button>
+      <button id="update-later-btn" type="button">Later</button>
+    </div>
 
     <div id="drop-overlay" aria-hidden="true"><span>Drop files to open</span></div>
     <div id="toast" role="status" aria-live="polite"></div>

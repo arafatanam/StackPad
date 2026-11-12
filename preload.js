@@ -27,6 +27,17 @@ contextBridge.exposeInMainWorld("api", {
   saveFile: (data) => ipcRenderer.invoke("file:save", data),
   setWindowRatio: (ratio) => ipcRenderer.invoke("window:set-ratio", ratio),
   print: () => ipcRenderer.invoke("app:print"),
+  checkFiles: (entries) => ipcRenderer.invoke("files:check", entries),
+
+  openLink: (name) => ipcRenderer.send("app:open-link", name),
+  getAppInfo: () => ipcRenderer.invoke("app:info"),
+  checkForUpdates: () => ipcRenderer.invoke("update:check"),
+  installUpdate: () => ipcRenderer.invoke("update:install"),
+  onUpdateDownloaded: (callback) =>
+    ipcRenderer.on("update-downloaded", (event, info) => callback(info)),
+  onUpdateAvailable: (callback) =>
+    ipcRenderer.on("update-available", (event, info) => callback(info)),
+  onWindowFocused: (callback) => ipcRenderer.on("window-focused", () => callback()),
 
   onMenuAction: (callback) =>
     ipcRenderer.on("menu-action", (event, data) => callback(data)),
