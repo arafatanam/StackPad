@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://arafatanam.github.io/StackPad/"><strong>Website &amp; download</strong></a> ·
+  <a href="https://stackpad-app.vercel.app/"><strong>Website &amp; download</strong></a> ·
   <a href="CHANGELOG.md">Release notes</a> ·
   <a href="PRIVACY.md">Privacy</a> ·
   <a href="https://github.com/arafatanam/StackPad/issues/new/choose">Report a problem</a>
@@ -125,7 +125,7 @@ Both apps are plain-text editors with tabs, find and replace, themes and session
 
 ## Installing StackPad
 
-Download the latest version from the **[StackPad website](https://arafatanam.github.io/StackPad/#download)** or the [Releases page](https://github.com/arafatanam/StackPad/releases/latest).
+Download the latest version from the **[StackPad website](https://stackpad-app.vercel.app/#download)** or the [Releases page](https://github.com/arafatanam/StackPad/releases/latest).
 
 ### Windows
 
@@ -196,7 +196,6 @@ Files you save with **Save / Save As** live wherever you put them. The drafts ar
 stackpad/
 ├── .github/
 │   ├── workflows/build.yml   # tests, builds and (optionally) signs the installers
-│   ├── workflows/pages.yml   # publishes the website
 │   └── ISSUE_TEMPLATE/       # bug report and feature request forms
 ├── build/                    # app icons, installer artwork and Microsoft Store tiles
 ├── docs/SIGNING.md           # code signing and Microsoft Store guide
@@ -209,7 +208,7 @@ stackpad/
 │   ├── renderer.js           # tabs, editor, find/replace, saving, settings
 │   └── styles.css            # themes, layout and motion
 ├── test/                     # automated tests (npm test)
-├── website/                  # the project website (GitHub Pages)
+├── website/                  # the project website (hosted on Vercel)
 ├── main.js                   # window, native menu, file reading/writing, storage
 ├── preload.js                # the safe bridge between the window and main.js
 └── package.json              # scripts and installer configuration

@@ -30,7 +30,7 @@ If you run StackPad from a terminal inside VS Code and it fails with `Cannot fin
 | `lib/updater.js` | Automatic updates from GitHub releases |
 | `src/` | The window's page: layout, styles and editor behaviour |
 | `test/` | Tests run with Node's built-in test runner |
-| `website/` | The project website, published to GitHub Pages |
+| `website/` | The project website, hosted on Vercel |
 
 ### Guidelines
 

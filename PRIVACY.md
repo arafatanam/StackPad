@@ -26,7 +26,7 @@ Links in the **Help** menu and the About box open in your web browser only when 
 
 ## The website
 
-The StackPad website is hosted on GitHub Pages. It sets no cookies and uses no analytics. To show the latest version on its download button, your browser asks GitHub's public API for the newest release. GitHub may log that request as described in its privacy statement.
+The StackPad website is hosted on Vercel. It sets no cookies and uses no analytics. To show the latest version on its download button, your browser asks GitHub's public API for the newest release. GitHub may log that request as described in its privacy statement.
 
 ## Bug reports
 

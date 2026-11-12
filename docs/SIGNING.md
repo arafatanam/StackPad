@@ -59,7 +59,7 @@ Push the release tag (see [CONTRIBUTING.md](../CONTRIBUTING.md#making-a-release-
 In Partner Center, open StackPad and **Start your submission**:
 
 - **Pricing and availability:** Free, all markets.
-- **Properties:** category **Productivity** (subcategory none) or **Utilities & tools**. Privacy policy URL: `https://arafatanam.github.io/StackPad/privacy.html`. Website: `https://arafatanam.github.io/StackPad/`. Support contact: `https://github.com/arafatanam/StackPad/issues`.
+- **Properties:** category **Productivity** (subcategory none) or **Utilities & tools**. Privacy policy URL: `https://stackpad-app.vercel.app/privacy.html`. Website: `https://stackpad-app.vercel.app/`. Support contact: `https://github.com/arafatanam/StackPad/issues`.
 - **Age ratings:** answer the questionnaire. StackPad has no user interaction, sharing, purchases or location, so it gets the lowest rating.
 - **Packages:** upload the `.appx`. Partner Center checks that its identity matches the reservation.
 - **Store listings → English:**
@@ -103,7 +103,7 @@ SignPath Foundation checks these before approving a project (see <https://signpa
 1. Fill in the application form linked from <https://signpath.org> ("Apply" / "Get started for open source").
 2. Give:
    - Repository: `https://github.com/arafatanam/StackPad`
-   - Website: `https://arafatanam.github.io/StackPad/`
+   - Website: `https://stackpad-app.vercel.app/`
    - Build system: GitHub Actions (`.github/workflows/build.yml`)
    - What gets signed: the Windows app `StackPad.exe` and the installer `StackPad.v<version>.exe`
 3. Wait for approval. It can take a few weeks. They may ask questions by email.

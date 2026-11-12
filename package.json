@@ -2,7 +2,7 @@
   "name": "stackpad",
   "version": "2.2.0",
   "description": "StackPad is a lightweight notepad for Windows and Linux with vertical tabs, tab groups, window size presets and a clean light/dark theme.",
-  "homepage": "https://arafatanam.github.io/StackPad/",
+  "homepage": "https://stackpad-app.vercel.app/",
   "repository": {
     "type": "git",
     "url": "https://github.com/arafatanam/StackPad.git"
