@@ -10,6 +10,7 @@
 
 <p align="center">
   <a href="https://getstackpad.vercel.app/#download"><strong>Download</strong></a> ·
+  <a href="https://apps.microsoft.com/detail/9NBDRFL8LM3D">Microsoft Store</a> ·
   <a href="https://getstackpad.vercel.app/">Website</a> ·
   <a href="CHANGELOG.md">What's new</a> ·
   <a href="PRIVACY.md">Privacy</a> ·
@@ -34,7 +35,7 @@
 
 ## Download and install
 
-Get the latest version from the **[website](https://getstackpad.vercel.app/#download)** or the **[Releases page](https://github.com/arafatanam/StackPad/releases/latest)**.
+Get the latest version from the **[website](https://getstackpad.vercel.app/#download)** or the **[Releases page](https://github.com/arafatanam/StackPad/releases/latest)**. On Windows you can also get it from the **[Microsoft Store](https://apps.microsoft.com/detail/9NBDRFL8LM3D)**: no security warning, and the Store keeps it updated.
 
 | System | File | Updates |
 | --- | --- | --- |
@@ -47,7 +48,7 @@ Get the latest version from the **[website](https://getstackpad.vercel.app/#down
 1. Run the downloaded `.exe` and follow the setup wizard. You can install for just you or for everyone on the PC.
 2. StackPad appears in the Start menu, on the desktop, and under **Open with** for `.txt` files.
 
-> **"Windows protected your PC"?** That's expected. Windows shows this warning for any app that isn't **code-signed**, and signing certificates cost money each year, so this free project doesn't have one. To continue, click **More info → Run anyway**. You only see this once. Every installer is built in public by [GitHub Actions](https://github.com/arafatanam/StackPad/actions) from the source code in this repository.
+> **"Windows protected your PC"?** That's expected. Windows shows this warning for any app that isn't **code-signed**, and signing certificates cost money each year, so this free project doesn't have one. To continue, click **More info → Run anyway**. You only see this once. Or install from the [Microsoft Store](https://apps.microsoft.com/detail/9NBDRFL8LM3D) instead, which has no warning. Every installer is built in public by [GitHub Actions](https://github.com/arafatanam/StackPad/actions) from the source code in this repository.
 
 To uninstall, open **Settings → Apps → Installed apps → StackPad → Uninstall**.
 

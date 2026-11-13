@@ -1,5 +1,7 @@
 # Publishing StackPad on the Microsoft Store
 
+**Live listing:** <https://apps.microsoft.com/detail/9NBDRFL8LM3D> (Store ID `9NBDRFL8LM3D`, published 2026-11-13).
+
 The installer on the website isn't code-signed, so Windows SmartScreen shows "Windows protected your PC" the first time someone runs it (they continue with **More info → Run anyway**). The Microsoft Store avoids that: it's free for individual developers, Microsoft signs the package itself, and people can find StackPad by searching the Store.
 
 The build is already set up for it: every release also produces a Store package.

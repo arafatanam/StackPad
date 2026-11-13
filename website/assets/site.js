@@ -6,8 +6,8 @@
   // ---- Settings to update for each release ----
   const VERSION = "2.2.0"; // fallback when GitHub can't be reached
   const REPO = "arafatanam/StackPad";
-  // Paste the Microsoft Store listing URL here once it's live (docs/MICROSOFT-STORE.md).
-  const STORE_URL = "";
+  // Microsoft Store listing (live since 2026-11-13).
+  const STORE_URL = "https://apps.microsoft.com/detail/9NBDRFL8LM3D";
 
   const RELEASES = `https://github.com/${REPO}/releases`;
 
