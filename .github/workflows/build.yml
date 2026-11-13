@@ -58,19 +58,19 @@ jobs:
       # Says on the run's summary page which SignPath settings this run can
       # see (never their values), so a skipped signing step is easy to explain.
       - name: Check signing settings
+        continue-on-error: true
+        shell: pwsh
         env:
           HAS_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN != '' }}
-          ORG_ID: ${{ vars.SIGNPATH_ORGANIZATION_ID != '' }}
+          HAS_ORG: ${{ vars.SIGNPATH_ORGANIZATION_ID != '' }}
           PROJECT: ${{ vars.SIGNPATH_PROJECT_SLUG }}
           POLICY: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
         run: |
-          yn() { [ "$1" = "true" ] && echo found || echo MISSING; }
-          msg="secret SIGNPATH_API_TOKEN: $(yn "$HAS_TOKEN"), variable SIGNPATH_ORGANIZATION_ID: $(yn "$ORG_ID"), project slug: '${PROJECT:-MISSING}', signing policy slug: '${POLICY:-MISSING}'"
-          if [ "$SIGN" = "true" ]; then
-            echo "::notice title=Code signing is ON::$msg"
-          else
-            echo "::warning title=Code signing is OFF::$msg"
-          fi the app folder (dist/win-unpacked) without an installer,
+          function State($v) { if ($v -eq 'true') { 'found' } else { 'MISSING' } }
+          $project = if ($env:PROJECT) { $env:PROJECT } else { 'MISSING' }
+          $policy = if ($env:POLICY) { $env:POLICY } else { 'MISSING' }
+          $msg = "secret SIGNPATH_API_TOKEN: $(State $env:HAS_TOKEN), variable SIGNPATH_ORGANIZATION_ID: $(State $env:HAS_ORG), project slug: $project, signing policy slug: $policy"
+          if ($env:SIGN -eq 'true') { "::notice title=Code signing is ON::$msg" } else { "::warning title=Code signing is OFF::$msg" } the app folder (dist/win-unpacked) without an installer,
       #    so StackPad.exe itself can be signed before it's wrapped up.
       - run: npx electron-builder --win dir --publish never
 
