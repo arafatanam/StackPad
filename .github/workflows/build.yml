@@ -8,7 +8,7 @@
 #
 # Optional, switched on by repository settings (see docs/SIGNING.md):
 # - Code signing through SignPath, when the SIGNPATH_API_TOKEN secret and the
-#   SIGNPATH_* variables are set.
+#   SIGNPATH_* settings are set (as variables or secrets).
 # - A Microsoft Store package, when the MS_STORE_* variables are set.
 name: Build installers
 
@@ -43,7 +43,7 @@ jobs:
     if: github.event_name != 'pull_request'
     runs-on: windows-latest
     env:
-      SIGN: ${{ secrets.SIGNPATH_API_TOKEN != '' && vars.SIGNPATH_ORGANIZATION_ID != '' }}
+      SIGN: ${{ secrets.SIGNPATH_API_TOKEN != '' && (vars.SIGNPATH_ORGANIZATION_ID || secrets.SIGNPATH_ORGANIZATION_ID) != '' }}
     defaults:
       run:
         shell: bash
@@ -62,14 +62,14 @@ jobs:
         shell: pwsh
         env:
           HAS_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN != '' }}
-          HAS_ORG: ${{ vars.SIGNPATH_ORGANIZATION_ID != '' }}
-          PROJECT: ${{ vars.SIGNPATH_PROJECT_SLUG }}
-          POLICY: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          HAS_ORG: ${{ (vars.SIGNPATH_ORGANIZATION_ID || secrets.SIGNPATH_ORGANIZATION_ID) != '' }}
+          PROJECT: ${{ (vars.SIGNPATH_PROJECT_SLUG || secrets.SIGNPATH_PROJECT_SLUG) }}
+          POLICY: ${{ (vars.SIGNPATH_SIGNING_POLICY_SLUG || secrets.SIGNPATH_SIGNING_POLICY_SLUG) }}
         run: |
           function State($v) { if ($v -eq 'true') { 'found' } else { 'MISSING' } }
           $project = if ($env:PROJECT) { $env:PROJECT } else { 'MISSING' }
           $policy = if ($env:POLICY) { $env:POLICY } else { 'MISSING' }
-          $msg = "secret SIGNPATH_API_TOKEN: $(State $env:HAS_TOKEN), variable SIGNPATH_ORGANIZATION_ID: $(State $env:HAS_ORG), project slug: $project, signing policy slug: $policy"
+          $msg = "secret SIGNPATH_API_TOKEN: $(State $env:HAS_TOKEN), SIGNPATH_ORGANIZATION_ID: $(State $env:HAS_ORG), project slug: $project, signing policy slug: $policy"
           if ($env:SIGN -eq 'true') { "::notice title=Code signing is ON::$msg" } else { "::warning title=Code signing is OFF::$msg" } the app folder (dist/win-unpacked) without an installer,
       #    so StackPad.exe itself can be signed before it's wrapped up.
       - run: npx electron-builder --win dir --publish never
@@ -88,9 +88,9 @@ jobs:
         uses: signpath/github-action-submit-signing-request@v1
         with:
           api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
-          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
-          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
-          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          organization-id: ${{ (vars.SIGNPATH_ORGANIZATION_ID || secrets.SIGNPATH_ORGANIZATION_ID) }}
+          project-slug: ${{ (vars.SIGNPATH_PROJECT_SLUG || secrets.SIGNPATH_PROJECT_SLUG) }}
+          signing-policy-slug: ${{ (vars.SIGNPATH_SIGNING_POLICY_SLUG || secrets.SIGNPATH_SIGNING_POLICY_SLUG) }}
           github-artifact-id: ${{ steps.unsigned-app.outputs.artifact-id }}
           wait-for-completion: true
           # Release signing waits for you to approve it on signpath.io.
@@ -118,9 +118,9 @@ jobs:
         uses: signpath/github-action-submit-signing-request@v1
         with:
           api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
-          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
-          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
-          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          organization-id: ${{ (vars.SIGNPATH_ORGANIZATION_ID || secrets.SIGNPATH_ORGANIZATION_ID) }}
+          project-slug: ${{ (vars.SIGNPATH_PROJECT_SLUG || secrets.SIGNPATH_PROJECT_SLUG) }}
+          signing-policy-slug: ${{ (vars.SIGNPATH_SIGNING_POLICY_SLUG || secrets.SIGNPATH_SIGNING_POLICY_SLUG) }}
           github-artifact-id: ${{ steps.unsigned-installer.outputs.artifact-id }}
           wait-for-completion: true
           # Release signing waits for you to approve it on signpath.io.
