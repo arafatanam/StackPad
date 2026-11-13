@@ -55,7 +55,22 @@ jobs:
           cache: npm
       - run: npm ci
 
-      # 1. Package the app folder (dist/win-unpacked) without an installer,
+      # Says on the run's summary page which SignPath settings this run can
+      # see (never their values), so a skipped signing step is easy to explain.
+      - name: Check signing settings
+        env:
+          HAS_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN != '' }}
+          ORG_ID: ${{ vars.SIGNPATH_ORGANIZATION_ID != '' }}
+          PROJECT: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          POLICY: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+        run: |
+          yn() { [ "$1" = "true" ] && echo found || echo MISSING; }
+          msg="secret SIGNPATH_API_TOKEN: $(yn "$HAS_TOKEN"), variable SIGNPATH_ORGANIZATION_ID: $(yn "$ORG_ID"), project slug: '${PROJECT:-MISSING}', signing policy slug: '${POLICY:-MISSING}'"
+          if [ "$SIGN" = "true" ]; then
+            echo "::notice title=Code signing is ON::$msg"
+          else
+            echo "::warning title=Code signing is OFF::$msg"
+          fi the app folder (dist/win-unpacked) without an installer,
       #    so StackPad.exe itself can be signed before it's wrapped up.
       - run: npx electron-builder --win dir --publish never
 
