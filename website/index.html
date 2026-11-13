@@ -9,7 +9,7 @@
       content="StackPad is a free, open-source notepad for Windows and Linux. Vertical tabs, tab groups, and every note kept between sessions, even the ones you never saved. No account, no telemetry."
     />
     <meta name="theme-color" content="#1e3a8a" />
-    <link rel="canonical" href="https://stackpad-app.vercel.app/" />
+    <link rel="canonical" href="https://getstackpad.vercel.app/" />
     <link rel="icon" type="image/png" href="assets/favicon-64.png" />
     <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 
@@ -19,8 +19,8 @@
       property="og:description"
       content="Free and open source for Windows and Linux. Vertical tabs, tab groups, and nothing ever lost. No account, no telemetry."
     />
-    <meta property="og:url" content="https://stackpad-app.vercel.app/" />
-    <meta property="og:image" content="https://stackpad-app.vercel.app/assets/og-image.png" />
+    <meta property="og:url" content="https://getstackpad.vercel.app/" />
+    <meta property="og:image" content="https://getstackpad.vercel.app/assets/og-image.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
@@ -34,7 +34,7 @@
         "applicationCategory": "UtilitiesApplication",
         "softwareVersion": "2.2.0",
         "license": "https://opensource.org/licenses/MIT",
-        "url": "https://stackpad-app.vercel.app/",
+        "url": "https://getstackpad.vercel.app/",
         "downloadUrl": "https://github.com/arafatanam/StackPad/releases/latest",
         "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
       }
@@ -376,6 +376,10 @@
                 Download installer
               </a>
               <p class="download-meta" data-meta="exe">StackPad.v2.2.0.exe</p>
+              <p class="download-note">
+                Windows may say <em>"Windows protected your PC"</em>. Click <strong>More info → Run anyway</strong>.
+                <a href="#faq-smartscreen" data-open-faq>Why?</a>
+              </p>
               <a class="store-badge" data-store-link href="#" hidden>Get it from Microsoft Store</a>
             </article>
 
@@ -398,7 +402,7 @@
             <h3>Your download has started. Next:</h3>
             <ol data-steps-windows hidden>
               <li>Open <strong>StackPad.v<span data-version>2.2.0</span>.exe</strong> from your Downloads folder.</li>
-              <li data-smartscreen>
+              <li>
                 If Windows shows <em>"Windows protected your PC"</em>, choose <strong>More info → Run anyway</strong>.
                 StackPad isn't code-signed, so Windows doesn't recognise it. The installer is built
                 in public by <a href="https://github.com/arafatanam/StackPad/actions">GitHub Actions</a> from the open source code.
@@ -444,9 +448,9 @@
               <summary>Where are my notes stored?</summary>
               <p>On your computer only: <code>%APPDATA%\stackpad</code> on Windows and <code>~/.config/stackpad</code> on Linux. Files you save with Save As live wherever you put them. Uninstalling StackPad keeps your notes unless you delete that folder.</p>
             </details>
-            <details data-smartscreen>
-              <summary>Why does Windows warn me when I install it?</summary>
-              <p>Windows SmartScreen warns about any installer that isn't code-signed with a paid certificate, which most small open-source projects don't have yet. Choose <strong>More info → Run anyway</strong>. Every installer is built in public from the source code by GitHub Actions, so you can check exactly what went into it.</p>
+            <details id="faq-smartscreen">
+              <summary>Why does Windows warn me when I install it? Is it safe?</summary>
+              <p>Windows SmartScreen shows <em>"Windows protected your PC"</em> for any app that isn't <strong>code-signed</strong>. Signing certificates cost money every year, and StackPad is a free project without one. The warning means Windows doesn't know the publisher. It doesn't mean anything was found in the file. Click <strong>More info → Run anyway</strong> to install; you only see it once. Every installer is built in public by <a href="https://github.com/arafatanam/StackPad/actions">GitHub Actions</a> from the open source code, so anyone can check exactly what went into it.</p>
             </details>
             <details>
               <summary>How do updates work?</summary>

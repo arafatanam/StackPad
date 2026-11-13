@@ -46,7 +46,7 @@ Push the release tag (see [CONTRIBUTING.md](../CONTRIBUTING.md#making-a-release-
 In Partner Center, open StackPad and **Start your submission**:
 
 - **Pricing and availability:** Free, all markets.
-- **Properties:** category **Productivity** (subcategory none) or **Utilities & tools**. Privacy policy URL: `https://stackpad-app.vercel.app/privacy.html`. Website: `https://stackpad-app.vercel.app/`. Support contact: `https://github.com/arafatanam/StackPad/issues`.
+- **Properties:** category **Productivity** (subcategory none) or **Utilities & tools**. Privacy policy URL: `https://getstackpad.vercel.app/privacy.html`. Website: `https://getstackpad.vercel.app/`. Support contact: `https://github.com/arafatanam/StackPad/issues`.
 - **Age ratings:** answer the questionnaire. StackPad has no user interaction, sharing, purchases or location, so it gets the lowest rating.
 - **Packages:** upload the `.appx`. Partner Center checks that its identity matches the reservation.
 - **Store listings → English:**

@@ -4,5 +4,5 @@ contact_links:
     url: https://github.com/arafatanam/StackPad/security/advisories/new
     about: Please report security problems privately.
   - name: StackPad website
-    url: https://stackpad-app.vercel.app/
+    url: https://getstackpad.vercel.app/
     about: Download StackPad and read the FAQ.

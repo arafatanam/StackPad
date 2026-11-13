@@ -194,6 +194,14 @@
     el.textContent = new Date().getFullYear();
   });
 
+  // "Why?" next to the Windows download opens the matching FAQ answer.
+  document.querySelectorAll("[data-open-faq]").forEach((link) => {
+    link.addEventListener("click", () => {
+      const target = document.querySelector(link.getAttribute("href"));
+      if (target && target.tagName === "DETAILS") target.open = true;
+    });
+  });
+
   render();
   loadLatestRelease();
   setUpMotion();

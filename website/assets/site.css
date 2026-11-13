@@ -1039,6 +1039,21 @@ kbd {
   font-size: 0.85rem;
 }
 
+.download-note {
+  margin: 4px 0 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.download-note em,
+.download-note strong {
+  color: var(--fg);
+}
+
 .download-meta:last-child {
   margin-bottom: 0;
 }
