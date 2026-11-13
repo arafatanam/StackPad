@@ -1073,31 +1073,6 @@ kbd {
   box-shadow: 0 6px 18px rgba(20, 24, 40, 0.28);
 }
 
-.store-proof {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 22px;
-  padding: 8px 14px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--surface-raised);
-  color: var(--muted);
-  font-size: 0.9rem;
-  line-height: 1.4;
-  text-decoration: none;
-  transition: border-color 160ms var(--ease);
-}
-
-.store-proof strong {
-  color: var(--fg);
-  font-weight: 600;
-}
-
-.store-proof:hover {
-  border-color: var(--accent-text);
-}
-
 .next-steps {
   max-width: 860px;
   margin: 28px auto 0;
