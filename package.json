@@ -113,10 +113,10 @@
     ],
     "appx": {
       "applicationId": "StackPad",
-      "identityName": "REPLACE.WITH.PARTNER.CENTER.IDENTITY.NAME",
-      "publisher": "CN=REPLACE-WITH-PARTNER-CENTER-PUBLISHER-ID",
+      "identityName": "ArafatAnamChowdhury.StackPadNotesMadeSimple",
+      "publisher": "CN=D1A70030-BB93-4B85-A43C-720FD9773464",
       "publisherDisplayName": "Arafat Anam Chowdhury",
-      "displayName": "StackPad",
+      "displayName": "StackPad – Notes, Made Simple",
       "backgroundColor": "#1e3a8a",
       "languages": [
         "en-US"

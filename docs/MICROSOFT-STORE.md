@@ -2,7 +2,7 @@
 
 The installer on the website isn't code-signed, so Windows SmartScreen shows "Windows protected your PC" the first time someone runs it (they continue with **More info → Run anyway**). The Microsoft Store avoids that: it's free for individual developers, Microsoft signs the package itself, and people can find StackPad by searching the Store.
 
-The build is already set up for it. Once the three repository variables below are set, every tagged release also produces a Store package.
+The build is already set up for it: every release also produces a Store package.
 
 ### 1. Create a developer account
 
@@ -17,25 +17,18 @@ The build is already set up for it. Once the three repository variables below ar
 
 > Choose **MSIX**, not "EXE or MSI". For EXE/MSI listings the Store requires *you* to sign the installer with a paid certificate, which is the problem we're trying to avoid. With MSIX, Microsoft signs it for you.
 
-### 3. Copy the package identity into GitHub
+### 3. Put the package identity in the app
 
-1. In the new product, open **Product management → Product identity**. You'll see three values:
-   - `Package/Identity/Name` (something like `12345ArafatAnamChowdhury.StackPad`)
-   - `Package/Identity/Publisher` (something like `CN=1A2B3C4D-...`)
-   - `Package/Properties/PublisherDisplayName`
-2. On GitHub, open the repository → **Settings → Secrets and variables → Actions → Variables** tab, and add three **repository variables**:
+In Partner Center, **Product management → Product identity** shows the package name, publisher ID and publisher display name. They're already in the `appx` section of `package.json`:
 
-   | Variable | Value |
-   | --- | --- |
-   | `MS_STORE_IDENTITY_NAME` | `Package/Identity/Name` |
-   | `MS_STORE_PUBLISHER` | `Package/Identity/Publisher` (including `CN=`) |
-   | `MS_STORE_PUBLISHER_DISPLAY_NAME` | `Package/Properties/PublisherDisplayName` |
+| Partner Center | `package.json` → `build.appx` |
+| --- | --- |
+| Package/Identity/Name | `identityName`: `ArafatAnamChowdhury.StackPadNotesMadeSimple` |
+| Package/Identity/Publisher | `publisher`: `CN=D1A70030-BB93-4B85-A43C-720FD9773464` |
+| Package/Properties/PublisherDisplayName | `publisherDisplayName`: `Arafat Anam Chowdhury` |
+| Reserved app name | `displayName`: `StackPad – Notes, Made Simple` |
 
-   These aren't secrets, which is why they're variables.
-
-3. Optional: put the same values in the `appx` section of `package.json`, in place of the `REPLACE...` placeholders, so `npm run dist:store` works on your own PC too.
-
-From now on, every tagged release also builds a Store package. It appears as **microsoft-store-package** under the workflow run's artifacts.
+These aren't secret. Every build on GitHub Actions now also produces the Store package, as the **microsoft-store-package** artifact. To build it locally, run `npm run dist:store`.
 
 ### 4. Build the first package
 
