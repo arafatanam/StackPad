@@ -61,7 +61,14 @@
     let href = "#download";
     let meta = `Version ${version} · Windows 10 & 11 · Linux`;
 
-    if (platform === "windows") {
+    let store = false;
+
+    if (platform === "windows" && STORE_URL) {
+      label = "Get it from Microsoft Store";
+      href = STORE_URL;
+      meta = "Windows 10 & 11 · Signed by Microsoft, no security warning";
+      store = true;
+    } else if (platform === "windows") {
       label = "Download for Windows";
       href = assets.exe.url;
       meta = [`Version ${version}`, "Windows 10 & 11", formatSize(assets.exe.size)].filter(Boolean).join(" · ");
@@ -76,8 +83,14 @@
 
     document.querySelectorAll("[data-primary-download]").forEach((link) => {
       link.href = href;
-      link.dataset.kind = href === "#download" ? "" : platform === "linux" ? "appimage" : "exe";
+      link.dataset.kind = store || href === "#download" ? "" : platform === "linux" ? "appimage" : "exe";
+      link.classList.toggle("is-store", store);
       link.querySelector("[data-primary-label]").textContent = label;
+    });
+
+    // With the Store as the main Windows button, offer the .exe as a second choice.
+    document.querySelectorAll("[data-exe-alt]").forEach((el) => {
+      el.hidden = !store;
     });
 
     const primaryMeta = document.querySelector("[data-primary-meta]");
@@ -184,11 +197,9 @@
 
   // ---- Store link, signing, footer year ----
 
-  const storeLink = document.querySelector("[data-store-link]");
-  if (storeLink && STORE_URL) {
-    storeLink.href = STORE_URL;
-    storeLink.hidden = false;
-  }
+  document.querySelectorAll("[data-store-link]").forEach((link) => {
+    if (STORE_URL) link.href = STORE_URL;
+  });
 
   document.querySelectorAll("[data-year]").forEach((el) => {
     el.textContent = new Date().getFullYear();

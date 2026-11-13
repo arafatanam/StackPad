@@ -1039,37 +1039,63 @@ kbd {
   font-size: 0.85rem;
 }
 
-.download-note {
-  margin: 4px 0 0;
-  padding: 10px 12px;
-  border-radius: 8px;
-  background: var(--accent-soft);
-  color: var(--muted);
-  font-size: 0.85rem;
-  line-height: 1.5;
-}
-
-.download-note em,
-.download-note strong {
-  color: var(--fg);
-}
-
 .download-meta:last-child {
   margin-bottom: 0;
 }
 
-.store-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: auto;
-  padding: 8px 14px;
-  border-radius: 8px;
+/* ---------- Microsoft Store ---------- */
+
+.store-mark {
+  width: 1.15em;
+  height: 1.15em;
+  flex: none;
+}
+
+/* The big download buttons show the Store mark instead of the arrow when they point at the Store. */
+[data-primary-download] .store-mark,
+[data-primary-download].is-store .icon-download {
+  display: none;
+}
+
+[data-primary-download].is-store .store-mark {
+  display: block;
+}
+
+.btn-store {
   background: #000000;
   color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow: 0 1px 2px rgba(20, 24, 40, 0.15);
+}
+
+.btn-store:hover {
+  background: #23262e;
+  box-shadow: 0 6px 18px rgba(20, 24, 40, 0.28);
+}
+
+.store-proof {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 22px;
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-raised);
+  color: var(--muted);
   font-size: 0.9rem;
-  font-weight: 600;
+  line-height: 1.4;
   text-decoration: none;
+  transition: border-color 160ms var(--ease);
+}
+
+.store-proof strong {
+  color: var(--fg);
+  font-weight: 600;
+}
+
+.store-proof:hover {
+  border-color: var(--accent-text);
 }
 
 .next-steps {

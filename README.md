@@ -35,15 +35,20 @@
 
 ## Download and install
 
-Get the latest version from the **[website](https://getstackpad.vercel.app/#download)** or the **[Releases page](https://github.com/arafatanam/StackPad/releases/latest)**. On Windows you can also get it from the **[Microsoft Store](https://apps.microsoft.com/detail/9NBDRFL8LM3D)**: no security warning, and the Store keeps it updated.
+**Windows users: get StackPad from the [Microsoft Store](https://apps.microsoft.com/detail/9NBDRFL8LM3D).** It's certified and signed by Microsoft, installs without any warning, and the Store keeps it updated.
 
-| System | File | Updates |
+The installers are on the **[website](https://getstackpad.vercel.app/#download)** and the **[Releases page](https://github.com/arafatanam/StackPad/releases/latest)**.
+
+| System | Get it | Updates |
 | --- | --- | --- |
+| Windows 10 / 11 | [Microsoft Store](https://apps.microsoft.com/detail/9NBDRFL8LM3D) (recommended) | Automatic, through the Store |
 | Windows 10 / 11 (64-bit) | `StackPad.v<version>.exe` | Automatic |
 | Linux, any distribution | `StackPad.v<version>.AppImage` | Automatic |
 | Ubuntu, Debian, Mint | `StackPad.v<version>.deb` | StackPad tells you when one is out |
 
 ### Windows
+
+The easiest way is the [Microsoft Store](https://apps.microsoft.com/detail/9NBDRFL8LM3D): click **Get** and you're done. To use the installer instead:
 
 1. Run the downloaded `.exe` and follow the setup wizard. You can install for just you or for everyone on the PC.
 2. StackPad appears in the Start menu, on the desktop, and under **Open with** for `.txt` files.
