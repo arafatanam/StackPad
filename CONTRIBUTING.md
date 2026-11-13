@@ -49,7 +49,7 @@ If you run StackPad from a terminal inside VS Code and it fails with `Cannot fin
 ## Making a release (maintainers)
 
 1. Update `version` in `package.json` (and run `npm install --package-lock-only`), and turn the changelog's **Unreleased** heading into the new version and date.
-2. Update `VERSION` and the release date in `website/index.html`'s download script.
+2. Update `VERSION` at the top of `website/assets/site.js` (the fallback shown if GitHub can't be reached).
 3. Commit, then tag and push: `git tag v2.3.0 && git push origin main v2.3.0`.
-4. GitHub Actions tests and builds everything and creates a **draft** release with the installers, `latest.yml` and `latest-linux.yml` attached. Check it, then publish it. Installed copies start updating once it's published.
-5. If the Microsoft Store package was built, download it from the workflow run and submit it in Partner Center (see [docs/MICROSOFT-STORE.md](docs/MICROSOFT-STORE.md)).
+4. GitHub Actions tests and builds everything, then **publishes** the release with the installers, `latest.yml` and `latest-linux.yml` attached, using the changelog section as its notes. Installed copies start updating straight away.
+5. The same run submits the Microsoft Store package for certification, once the Partner Center credentials are set up (see [docs/MICROSOFT-STORE.md](docs/MICROSOFT-STORE.md)).

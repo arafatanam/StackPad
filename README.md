@@ -132,7 +132,7 @@ npm run dist    # build the installer for your system
 ```
 
 - The app lives in `main.js`, `preload.js` and `src/`. Saving and encodings are in `lib/textfile.js`, auto-update in `lib/updater.js`, and the website in `website/`.
-- Pushing a version tag (for example `v2.3.0`) makes GitHub Actions test everything, build the Windows and Linux installers, and create a draft release.
+- Pushing a version tag (for example `v2.3.0`) makes GitHub Actions test everything, build the Windows and Linux installers, publish the release and submit the Microsoft Store update.
 - Release steps are in [CONTRIBUTING.md](CONTRIBUTING.md). The optional Microsoft Store setup is in [docs/MICROSOFT-STORE.md](docs/MICROSOFT-STORE.md).
 
 Bug reports, ideas and pull requests are welcome. Please report security problems privately, as described in [SECURITY.md](SECURITY.md).

@@ -57,6 +57,24 @@ Submit. Certification usually takes 1–3 business days. You'll get an email if 
 
 When the listing is live, copy its URL (`https://apps.microsoft.com/detail/...`) into `STORE_URL` near the top of `website/assets/site.js`. The "Get it from Microsoft" button then appears on the website.
 
-### Later releases
+### 7. Automatic Store updates (one-time setup)
 
-Each release: download the new `microsoft-store-package` artifact, open **Partner Center → StackPad → Update** on the last submission, replace the package, update "What's new", and submit. The Store version number must always go up, which the normal version bump takes care of.
+After this, every version tag submits the new package to the Store, with that version's CHANGELOG notes as "What's new", without anyone opening Partner Center.
+
+1. **Connect a Microsoft Entra ID tenant.** In Partner Center: **Settings (gear) → Account settings → Organization profile → Tenants**. Associate an existing tenant, or choose **Create new tenant** and follow the steps.
+2. **Create the app access.** **Account settings → User management → Microsoft Entra applications → Create Microsoft Entra application**. Name it `StackPad GitHub`, give it the **Manager** role, and save.
+3. Open the new application. Note its **Tenant ID** and **Client ID**, then click **Add new key** and copy the key. It's shown only once.
+4. **Seller ID:** **Account settings → Legal info → Developer** tab.
+5. **Store ID:** the app's **Product management → Product identity** page (it starts with `9`).
+6. In the repository, set these secrets: `PARTNER_CENTER_TENANT_ID`, `PARTNER_CENTER_SELLER_ID`, `PARTNER_CENTER_CLIENT_ID`, `PARTNER_CENTER_CLIENT_SECRET` (the key from step 3). Also set the variable `MS_STORE_PRODUCT_ID` (the Store ID). For example:
+
+   ```bash
+   gh secret set PARTNER_CENTER_CLIENT_SECRET   # paste the key when asked
+   gh variable set MS_STORE_PRODUCT_ID --body 9XXXXXXXXXXX
+   ```
+
+The Store accepts a new submission only when the previous one has finished certification. If a release is tagged while one is still in review, the Store step fails and the package can be submitted by hand (below) once the review is done.
+
+### Submitting by hand
+
+Download the **microsoft-store-package** artifact from the workflow run, open **Partner Center → StackPad → Update** on the last submission, replace the package, update "What's new", and submit. The Store version number must always go up, which the normal version bump takes care of.

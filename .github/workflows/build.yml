@@ -2,12 +2,13 @@
 # machines. A Linux build can't be made on Windows, so this is how the Linux
 # files are made.
 #
-# - Pushing a tag such as v2.2.0 also creates a draft release with every file
-#   the website and the auto-updater need. Publish the draft to ship it.
+# - Pushing a tag such as v2.3.0 also publishes a release with every file
+#   the website and the auto-updater need.
 # - Pushing a release/* branch only builds, for downloading from the run.
 #
-# Also builds the Microsoft Store package (.appx), which is uploaded to
-# Partner Center by hand (see docs/MICROSOFT-STORE.md).
+# Also builds the Microsoft Store package (.appx). On a version tag it's
+# submitted to the Store automatically once the Partner Center credentials
+# are set up (see docs/MICROSOFT-STORE.md).
 name: Build installers
 
 on:
@@ -87,6 +88,11 @@ jobs:
     needs: test
     if: github.event_name != 'pull_request'
     runs-on: windows-latest
+    env:
+      # Store submission switches on once the Partner Center app credentials
+      # are saved in the repository (see docs/MICROSOFT-STORE.md).
+      STORE_SUBMIT: ${{ startsWith(github.ref, 'refs/tags/') && secrets.PARTNER_CENTER_CLIENT_SECRET != '' }}
+      PRODUCT_ID: ${{ vars.MS_STORE_PRODUCT_ID }}
     defaults:
       run:
         shell: bash
@@ -105,7 +111,33 @@ jobs:
           path: dist/*.appx
           if-no-files-found: error
 
-  draft-release:
+      # On a version tag: send the package to the Microsoft Store with this
+      # version's CHANGELOG notes as "What's new", and submit it for review.
+      - uses: microsoft/microsoft-store-apppublisher@v1.4
+        if: env.STORE_SUBMIT == 'true'
+      - name: Sign in to Partner Center
+        if: env.STORE_SUBMIT == 'true'
+        run: >
+          msstore reconfigure
+          --tenantId "${{ secrets.PARTNER_CENTER_TENANT_ID }}"
+          --sellerId "${{ secrets.PARTNER_CENTER_SELLER_ID }}"
+          --clientId "${{ secrets.PARTNER_CENTER_CLIENT_ID }}"
+          --clientSecret "${{ secrets.PARTNER_CENTER_CLIENT_SECRET }}"
+      - name: Upload the package to a new Store submission
+        if: env.STORE_SUBMIT == 'true'
+        run: msstore publish . --inputDirectory dist --appId "$PRODUCT_ID" --noCommit
+      - name: Set "What's new"
+        if: env.STORE_SUBMIT == 'true'
+        continue-on-error: true
+        run: |
+          msstore submission get "$PRODUCT_ID" > submission.json
+          node scripts/store-release-notes.js "${GITHUB_REF_NAME#v}" submission.json updated.json
+          msstore submission update "$PRODUCT_ID" updated.json
+      - name: Submit for certification
+        if: env.STORE_SUBMIT == 'true'
+        run: msstore submission publish "$PRODUCT_ID"
+
+  release:
     if: startsWith(github.ref, 'refs/tags/')
     needs: [windows, linux]
     runs-on: ubuntu-latest
@@ -118,6 +150,12 @@ jobs:
           pattern: release-*
           path: release
           merge-multiple: true
+      - name: Check every download and update file is there
+        run: |
+          v="${GITHUB_REF_NAME#v}"
+          for f in "StackPad.v$v.exe" "StackPad.v$v.exe.blockmap" latest.yml                    "StackPad.v$v.AppImage" "StackPad.v$v.deb" latest-linux.yml; do
+            [ -s "release/$f" ] || { echo "::error::Missing release/$f"; exit 1; }
+          done
       - name: Release notes from CHANGELOG.md
         run: |
           version="${GITHUB_REF_NAME#v}"
@@ -127,9 +165,12 @@ jobs:
             found { print }
           ' CHANGELOG.md > notes.md
           [ -s notes.md ] || echo "See CHANGELOG.md" > notes.md
-      - run: >
-          gh release create "$GITHUB_REF_NAME" release/*
-          --draft --title "StackPad $GITHUB_REF_NAME" --notes-file notes.md
-          --repo "$GITHUB_REPOSITORY"
+      # The release is created as a draft while the files upload, then
+      # published in one go, so the auto-updater never sees a half-finished
+      # release.
+      - name: Publish the release
+        run: |
+          gh release create "$GITHUB_REF_NAME" release/* --draft             --title "StackPad $GITHUB_REF_NAME" --notes-file notes.md --repo "$GITHUB_REPOSITORY"
+          gh release edit "$GITHUB_REF_NAME" --draft=false --latest --repo "$GITHUB_REPOSITORY"
         env:
           GH_TOKEN: ${{ github.token }}
