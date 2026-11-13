@@ -6,10 +6,8 @@
   // ---- Settings to update for each release ----
   const VERSION = "2.2.0"; // fallback when GitHub can't be reached
   const REPO = "arafatanam/StackPad";
-  // Paste the Microsoft Store listing URL here once it's live (docs/SIGNING.md).
+  // Paste the Microsoft Store listing URL here once it's live (docs/MICROSOFT-STORE.md).
   const STORE_URL = "";
-  // Set to true once the Windows installer is code-signed (docs/SIGNING.md).
-  const SIGNED = false;
 
   const RELEASES = `https://github.com/${REPO}/releases`;
 
@@ -190,10 +188,6 @@
   if (storeLink && STORE_URL) {
     storeLink.href = STORE_URL;
     storeLink.hidden = false;
-  }
-
-  if (SIGNED) {
-    document.querySelectorAll("[data-smartscreen]").forEach((el) => el.remove());
   }
 
   document.querySelectorAll("[data-year]").forEach((el) => {

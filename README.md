@@ -138,7 +138,7 @@ Download the latest version from the **[StackPad website](https://stackpad-app.v
 
 To uninstall, use **Settings → Apps → Installed apps → StackPad → Uninstall**. Your notes are kept unless you delete them yourself (see below).
 
-> Until the installer is code-signed, Windows SmartScreen may warn about an unrecognised app. Choose **More info → Run anyway** to continue. See [docs/SIGNING.md](docs/SIGNING.md) for the signing plan.
+> Windows SmartScreen may warn about an unrecognised app the first time you run the installer, because it isn't code-signed. Choose **More info → Run anyway** to continue.
 
 ### Linux
 
@@ -198,11 +198,10 @@ stackpad/
 │   ├── workflows/build.yml   # tests, builds and (optionally) signs the installers
 │   └── ISSUE_TEMPLATE/       # bug report and feature request forms
 ├── build/                    # app icons, installer artwork and Microsoft Store tiles
-├── docs/SIGNING.md           # code signing and Microsoft Store guide
+├── docs/MICROSOFT-STORE.md   # how to publish on the Microsoft Store
 ├── lib/
 │   ├── textfile.js           # encodings, line endings and crash-safe saving
 │   └── updater.js            # automatic updates
-├── scripts/                  # release helpers used by CI
 ├── src/
 │   ├── index.html            # window layout, menus and dialogs
 │   ├── renderer.js           # tabs, editor, find/replace, saving, settings
